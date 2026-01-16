@@ -1,0 +1,97 @@
+---
+# Check if the HAProxy container image is already available locally
+- name: Check if HAProxy container image is already present
+  ansible.builtin.command: >
+    ctr image ls name=={{ haproxy_container_image }}:{{ haproxy_container_tag }}
+  register: haproxy_image_check
+  ignore_errors: true
+  changed_when: false
+
+# We could skip the next step if the image is already present, but doing so would
+# prevent us from detecting updates to the image (i.e. re-tagging). Therefore, we always pull it.
+- name: Pull HAProxy container image
+  ansible.builtin.command: >
+    ctr image pull {{ haproxy_container_image }}:{{ haproxy_container_tag }}
+  register: haproxy_image_pull
+  # We consider the task changed only if the image pulled has a different digest from the already present
+  changed_when: haproxy_image_check.stdout_lines[-1].split()[2] !=
+    haproxy_image_pull.stdout_lines[-2].split()[-1].strip(".")
+
+# Ensure the HAProxy configuration directory exists before copying files
+- name: Create HAProxy configuration directory
+  ansible.builtin.file:
+    path: "{{ haproxy_configuration_file_path | dirname }}"
+    state: directory
+    mode: "0644"
+
+# Copy the Kubernetes CA certificate for secure communication with the API server
+- name: Copy Kubernetes CA
+  ansible.builtin.copy:
+    src: "{{ pki_dir }}/master/ca.crt"
+    dest: "{{ haproxy_configuration_file_path | dirname }}/kubernetes.crt"
+    owner: root
+    group: root
+    mode: "0644"
+  when: pki_dir is defined
+
+# Deploy the HAProxy configuration file from the template
+- name: Copy HAProxy configuration file
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: "{{ haproxy_configuration_file_path }}"
+    mode: "0644"
+  register: haproxy_config
+
+# IMPORTANT: The following validation and restart tasks are NOT handlers.
+# Handlers are executed at the end of the playbook, but we need to guarantee that
+# if the configuration changes, it must be validated and the service restarted
+# BEFORE the Prometheus health check (port wait) is executed.
+# This ensures the service is running with valid configuration before proceeding.
+
+# Validate the HAProxy configuration using a temporary container to prevent service disruption
+- name: Validate HAProxy configuration file
+  ansible.builtin.command: >
+    ctr run
+    --rm
+    --user 0
+    --net-host
+    --mount type=bind,src={{ haproxy_configuration_file_path | dirname }},dst=/usr/local/etc/haproxy/,options=rbind:ro
+    {{ haproxy_container_image }}:{{ haproxy_container_tag }}
+    haproxy-check-{{ ansible_date_time.epoch }}
+    haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
+  when: haproxy_config.changed
+  changed_when: false
+
+# Deploy the systemd unit file to manage HAProxy as a system service
+- name: Copy HAProxy systemd unit file
+  ansible.builtin.template:
+    src: systemd.unit.j2
+    dest: /etc/systemd/system/haproxy.service
+    mode: "0644"
+  register: haproxy_systemd_unit
+
+# Restart HAProxy service immediately after config or systemd unit changes (not as a handler)
+# This ensures the service is restarted with the new configuration before health checks
+- name: Restart HAProxy
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: haproxy
+    state: restarted
+  when: haproxy_config.changed or haproxy_systemd_unit.changed
+
+# Ensure HAProxy service is enabled and running
+- name: Ensure HAProxy service is started
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: haproxy
+    enabled: true
+    state: started
+
+# Wait for HAProxy stats port to be available, confirming the service is healthy
+- name: Wait for port 8405 to be started
+  ansible.builtin.wait_for:
+    host: localhost
+    port: "8405"
+    state: started
+    delay: 0
+    timeout: 30

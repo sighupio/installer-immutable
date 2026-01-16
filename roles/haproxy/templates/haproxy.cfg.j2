@@ -1,0 +1,7 @@
+{{ haproxy_configuration }}
+
+frontend prometheus
+    bind :8405
+    mode http
+    http-request use-service prometheus-exporter
+    no log

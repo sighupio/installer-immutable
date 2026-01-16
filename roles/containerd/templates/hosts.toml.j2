@@ -1,0 +1,14 @@
+# If we set the server parameter to the upstream registry like so:
+# server = "https://{{ item.registry }}"
+# containerd still tries to pull from there even if a mirror is defined.
+# For details on the configuration possible in this file, see:
+# https://github.com/containerd/containerd/blob/main/docs/hosts.md
+server = ""
+skip_verify = {{ item.insecure_skip_verify | bool | default(false) | lower }}
+
+{% if item.mirror_endpoint is defined %}
+{% for endpoint in item.mirror_endpoint %}
+[host."{{ endpoint }}"]
+  capabilities = ["pull", "resolve"]
+{% endfor %}
+{% endif %}

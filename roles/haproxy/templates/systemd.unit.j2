@@ -1,0 +1,18 @@
+[Unit]
+Description=Containerd HAProxy Service
+Wants=network-online.target
+After=network-online.target containerd.service
+Requires=containerd.service
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/ctr run \
+    --net-host \
+    --privileged \
+    --rm \
+    --user 0 \
+    --mount type=bind,src={{ haproxy_configuration_file_path | dirname }},dst=/usr/local/etc/haproxy/,options=rbind:ro \
+    {{ haproxy_container_image }}:{{ haproxy_container_tag }} \
+    haproxy
+[Install]
+WantedBy=multi-user.target

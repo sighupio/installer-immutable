@@ -1,0 +1,36 @@
+---
+- name: Renew certificates
+  register: renew_certs
+  changed_when: renew_certs.rc == 0
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - "kubeadm certs renew super-admin.conf"
+    - "kubeadm certs renew admin.conf"
+    - "kubeadm certs renew apiserver"
+    - "kubeadm certs renew apiserver-kubelet-client"
+    - "kubeadm certs renew controller-manager.conf"
+    - "kubeadm certs renew front-proxy-client"
+    - "kubeadm certs renew scheduler.conf"
+
+- name: Ensuring kubeadm-upgrade-config.yml config file is present on machine
+  ansible.builtin.template:
+    src: "kubeadm-upgrade-config.yml.j2"
+    dest: "{{ kubeadm_upgrade_config_file }}"
+    mode: "0600"
+
+- name: Upgrade Control Plane member with kubeadm
+  register: kubeadm_upgrade
+  changed_when: kubeadm_upgrade.rc == 0 and "[upgrade] SUCCESS" in kubeadm_upgrade.stdout
+  ansible.builtin.command: "kubeadm upgrade apply --config {{ kubeadm_upgrade_config_file }}"
+
+# TODO: why are we doing this after the upgrade? Why does it need to be re-generated?
+- name: Generate KubeletConfiguration patches file from template
+  ansible.builtin.template:
+    src: KubeletConfiguration-v1beta1.yml.j2
+    dest: "{{ kubelet_config_path }}/patches/kubeletconfiguration.yaml"
+    mode: "0644"
+  changed_when: true
+  notify:
+    - Apply kubelet-config patches
+    - Restart kubelet
+    - Kubelet verifications

@@ -1,0 +1,258 @@
+---
+- name: Ensure /etc/kubernetes directory is present
+  ansible.builtin.file:
+    name: "/etc/kubernetes"
+    state: directory
+    mode: "0755" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+
+- name: Ensure Kubernetes PKI directory is present
+  ansible.builtin.file:
+    path: /etc/kubernetes/pki
+    owner: root
+    group: root
+    mode: "0700"
+    state: directory
+
+- name: Copy Kubernetes PKI to control plane
+  ansible.builtin.copy:
+    src: "{{ kubernetes_local_pki_dir }}/{{ item }}"
+    dest: "/etc/kubernetes/pki/{{ item }}"
+    owner: root
+    group: root
+    mode: "{{ '0400' if item.endswith('.key') else '0600' }}"
+  with_items:
+    - ca.crt
+    - ca.key
+    - front-proxy-ca.crt
+    - front-proxy-ca.key
+    - sa.key
+    - sa.pub
+
+- name: Create admission config file for EventRateLimit
+  ansible.builtin.template:
+    src: admission-config.yaml.j2
+    dest: "{{ eventratelimit_config_file | default('/etc/kubernetes/admission-config.yaml') }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ensuring audit folder is present on machine
+  ansible.builtin.file:
+    name: "{{ audit_log_dir }}"
+    state: directory
+    mode: "0755" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+
+
+- name: Ensuring audit config file is present on machine
+  ansible.builtin.copy:
+    src: audit.yml
+    dest: "{{ audit_policy_config_path }}"
+    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+
+- name: Ensuring encryption config is present on machine
+  ansible.builtin.copy:
+    src: "{{ kubernetes_encryption_config }}"
+    dest: "{{ kubernetes_remote_encryption_config }}"
+    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+  when: kubernetes_encryption_config != ""
+
+- name: Writing kubeadm.yml configuration file
+  ansible.builtin.template:
+    src: kubeadm.yml.j2
+    dest: "{{ kubeadm_config_file }}"
+    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+  register: kubeadm_config
+
+- name: Validate kubeadm.yml configuration file
+  ansible.builtin.command: "kubeadm config validate --config {{ kubeadm_config_file }}"
+  when: kubeadm_config.changed
+  changed_when: false
+
+- name: Automatically set KUBECONFIG environment variable for shell users
+  ansible.builtin.copy:
+    src: kube.sh
+    dest: /etc/profile.d/kube.sh
+    mode: "0644"
+
+- name: Check that the /etc/kubernetes/admin.conf exists
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: admin_conf_stat_result
+
+- name: Check that the /etc/kubernetes/super-admin.conf exists
+  ansible.builtin.stat:
+    path: /etc/kubernetes/super-admin.conf
+  register: super_admin_conf_stat_result
+
+# We are patching the bind-address of the kube-scheduler and kube-controller-manager
+# to be able to scrape metrics from them (kubeadm's feault is 127.0.0.1), we have
+# to patch the liveness and startup probe too in consequence.
+# We also patch the KubeletConfiguration because it may be different between nodes.
+- name: Ensuring the patches directory exists
+  ansible.builtin.file:
+    path: "{{ kubeadm_patches_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Copy kube-scheduler patch files
+  ansible.builtin.template:
+    src: patches/kube-scheduler0+json.json.j2
+    dest: "{{ kubeadm_patches_path }}/kube-scheduler0+json.json"
+    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+
+- name: Copy kube-controller-manager patch files
+  ansible.builtin.template:
+    src: patches/kube-controller-manager0+json.json.j2
+    dest: "{{ kubeadm_patches_path }}/kube-controller-manager0+json.json"
+    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+
+- name: Copy KubeletConfiguration patches file
+  ansible.builtin.template:
+    src: KubeletConfiguration-v1beta1.yml.j2
+    # TODO: check if we should use this path or `kubelet_config_path/patches/`
+    dest: "{{ kubeadm_patches_path }}/kubeletconfiguration.yaml"
+    mode: "0600"
+  register: kubelet_patches
+
+- name: Ensuring the kubeadm-config directory exists
+  ansible.builtin.file:
+    path: "{{ kubeadm_config_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Reconfigure kube-* components
+  ansible.builtin.include_tasks: reconfigure-kube-star-components.yml
+  when:
+    - super_admin_conf_stat_result.stat.exists or admin_conf_stat_result.stat.exists
+    - kubeadm_config.changed
+
+- name: Initializing master
+  ansible.builtin.command: "kubeadm init --config={{ kubeadm_config_file }}"
+  # This command always changes the state when is run
+  changed_when: true
+  when: not super_admin_conf_stat_result.stat.exists
+
+- name: Ensure right permissions for PKI files generated by kubeadm
+  when: not super_admin_conf_stat_result.stat.exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    state: file
+    recurse: false
+    mode: "{{ '0400' if item.endswith('.key') else '0600' }}"
+  loop:
+    - "/etc/kubernetes/pki/apiserver.key"
+    - "/etc/kubernetes/pki/apiserver.crt"
+    - "/etc/kubernetes/pki/apiserver-kubelet-client.key"
+    - "/etc/kubernetes/pki/apiserver-kubelet-client.crt"
+    - "/etc/kubernetes/pki/front-proxy-client.key"
+    - "/etc/kubernetes/pki/front-proxy-client.crt"
+
+- name: Getting bootstrap token
+  ansible.builtin.command: "kubeadm token create --ttl=30m"
+  register: kubernetes_bootstrap_token
+  # This command does not change the state
+  changed_when: false
+  # No need to create the token in all the control plane nodes
+  run_once: true
+
+- name: Getting Kubernetes CA hash
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt |
+    openssl rsa -pubin -outform der 2>/dev/null |
+    openssl dgst -sha256 -hex |
+    sed 's/^.* /sha256:/'
+  register: kubernetes_ca_hash
+  # This command does not change the state
+  changed_when: false
+  # No need to calulate hash in all the control plane nodes
+  run_once: true
+
+- name: Creating users kubeconfig folder
+  ansible.builtin.file:
+    name: "{{ kubernetes_users_kubeconfig_dir }}"
+    state: directory
+    mode: "0755" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+
+- name: Creating Kubernetes Users with kubeadm
+  ansible.builtin.shell: "kubeadm kubeconfig user
+    --config={{ kubeadm_config_file }}
+    --client-name={{ item }}
+    --org={{ kubernetes_users_org }}
+    > {{ kubernetes_users_kubeconfig_dir }}/{{ item }}.kubeconfig"
+  with_items: "{{ kubernetes_users_names }}"
+  changed_when: true
+  # No need to create the users in all the control plane nodes
+  run_once: true
+
+- name: Fetching kubeconfig files from the control plane
+  run_once: true
+  ansible.builtin.fetch:
+    src: "{{ kubernetes_users_kubeconfig_dir }}/{{ item }}.kubeconfig"
+    dest: "{{ kubernetes_kubeconfig_path }}/{{ item }}.kubeconfig"
+    flat: true
+  with_items: "{{ kubernetes_users_names }}"
+
+- name: Fetching admin.conf kubeconfig from the control plane
+  run_once: true
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ kubernetes_kubeconfig_path }}/admin.conf"
+    flat: true
+
+- name: Fetching super-admin.conf kubeconfig from the control plane
+  run_once: true
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/super-admin.conf
+    dest: "{{ kubernetes_kubeconfig_path }}/super-admin.conf"
+    flat: true
+
+- name: Reconfigure Kubelet
+  # If kubelet.conf doesn't exist, kubeadm init will configure kubelet using the patches
+  when: kubelet_patches.changed and not super_admin_conf_stat_result
+  register: kubelet_reapply_config
+  # Note: this command does not show in its output if no changes were applied, even when nothing changes
+  # the configuration file is regenerated and the command logs the message:
+  # "The kubelet configuration for this node was successfully upgraded".
+  changed_when: kubelet_reapply_config.rc == 0 and
+    "The kubelet configuration for this node was successfully upgraded" in kubelet_reapply_config.stdout
+  ansible.builtin.command: kubeadm upgrade node phase kubelet-config --patches {{ kubeadm_patches_path }}
+
+- name: Restart and verify kubelet after reconfiguration
+  ansible.builtin.include_tasks: "kubelet_restart.yml"
+  when: kubelet_reapply_config.changed
+
+- name: Ensure kubelet config.yaml has restricted permissions
+  ansible.builtin.file:
+    path: /var/lib/kubelet/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  # This file is created when the node is joined to the cluster with '0644' permissions so we need to fix it only
+  # if kubeadm join was executed, reconfiguring the kubelet does not change permissions of this file.
+  when: not super_admin_conf_stat_result.stat.exists
+
+# FIXME: this fails in flatcar because /usr is read-only
+- name: Ensure that the kubelet service config file exists and has correct permissions
+  ansible.builtin.file:
+    path: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+    owner: root
+    group: root
+    mode: "0644" # FIXME: CIS Benchmark wants this 0600
+
+- name: Upgrade Kubernetes Control Plane
+  ansible.builtin.include_tasks: upgrade.yml
+  when: upgrade
+
+- name: Ensuring kubelet-csr-approver.yaml file is present
+  ansible.builtin.copy:
+    src: kubelet-csr-approver.yaml
+    dest: /etc/kubernetes/kubelet-csr-approver.yaml
+    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+
+- name: Apply kubelet-csr-approver CronJob
+  ansible.builtin.command: >
+    kubectl apply --kubeconfig /etc/kubernetes/admin.conf -f /etc/kubernetes/kubelet-csr-approver.yaml --server-side
+  changed_when: true

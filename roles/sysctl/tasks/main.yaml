@@ -1,0 +1,26 @@
+---
+# Dump the current values before we change them, so the user can restore them if needed.
+# We do this because sysctl does not provide a way to know what is the default value for a parameter nor to reset it.
+# To reset a value you need to remove the custom value and reboot the system or manually set it again.
+- name: Backup original values to {{ sysctl_dump_path }}
+  ansible.builtin.shell:
+    cmd: "sysctl -a > {{ sysctl_dump_path }}"
+    creates: "{{ sysctl_dump_path }}"
+
+- name: Save custom kernel parameters
+  register: sysctl_parameters
+  ansible.builtin.template:
+    src: custom.conf.j2
+    dest: "{{ sysctl_file_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+# We don't use a handler because we want to run this immediately after the file is written.
+# We reload all the parameters (--system) so we are sure that the values are the same as they would be after a reboot.
+- name: Load kernel parameters
+  when: sysctl_parameters.changed
+  register: sysctl_load
+  changed_when: sysctl_load.rc == 0
+  ansible.builtin.command:
+    cmd: "sysctl -p --system"

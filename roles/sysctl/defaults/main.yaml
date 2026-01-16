@@ -1,0 +1,11 @@
+---
+# sysctl_parameters: List of custom kernel parameters to set
+# format:
+# - name: <parameter_name>
+#   value: <parameter_value>
+sysctl_parameters: []
+# Directory to hold sysctl.d configuration files
+sysctl_d_path: "/etc/sysctl.d"
+# Sysctl configuration file path for custom kernel parameters
+sysctl_file_path: "{{ sysctl_d_path }}/99-sighup-distribution.conf"
+sysctl_dump_path: "{{ sysctl_d_path }}/sysctl-dump.original"

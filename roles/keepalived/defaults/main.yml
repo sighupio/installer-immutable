@@ -1,0 +1,8 @@
+---
+keepalived_cluster: false
+keepalived_interface: eth0
+keepalived_on_controlplane: false
+keepalived_passphrase: "12345678"
+keepalived_virtual_router_id: "51"
+# The group name that contains the keepalived nodes
+keepalived_ansible_group_name: "load_balancers"

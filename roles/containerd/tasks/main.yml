@@ -1,0 +1,95 @@
+---
+- name: Write containerd HTTP proxy configuration drop-in
+  ansible.builtin.template:
+    src: http-proxy.conf.j2
+    dest: "{{ containerd_systemd_dir }}/http-proxy.conf"
+    mode: "0644"
+  register: containerd_proxy_config
+
+- name: Write containerd configuration file
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: "{{ containerd_cfg_dir }}/config.toml"
+    owner: "root"
+    mode: "0640"
+  register: containerd_config
+
+# containerd registry cofiguration is not written in the main config.toml file anymore like it was for containerd v1.x.
+# For containerd v2.x that uses configuration v3, the configuration for each host is saved in
+# /etc/containerd/certs.d/<host>/hosts.toml
+# so we need to handle the creation (and removal) of the needed directories and relevant configuration files for each
+# host the user wants to configure.
+- name: List existing registry configuration directories
+  ansible.builtin.find:
+    paths:
+      - "{{ containerd_cfg_dir }}/certs.d/"
+    recurse: false
+    file_type: directory
+  register: containerd_current_registry_config_directories
+
+- name: Ensure desired registry configuration directories exist
+  register: containerd_desired_registry_config_dirs
+  ansible.builtin.file:
+    path: "{{ containerd_cfg_dir }}/certs.d/{{ item.registry }}"
+    owner: "root"
+    mode: "0700"
+    state: directory
+  loop: "{{ containerd_registry_configs }}"
+  # We don't want to log registry credentials
+  no_log: true
+
+- name: Write containerd registry configuration files
+  ansible.builtin.template:
+    src: hosts.toml.j2
+    dest: "{{ containerd_cfg_dir }}/certs.d/{{ item.registry }}/hosts.toml"
+    owner: "root"
+    mode: "0640"
+  loop: "{{ containerd_registry_configs }}"
+  register: containerd_registry_config
+  # We don't want to log registry credentials
+  no_log: true
+
+- name: Remove unneeded registry configuration directories
+  vars:
+    existing_dirs: "{{ containerd_current_registry_config_directories.files | map(attribute='path') | list }}"
+    keep_dirs: "{{ containerd_desired_registry_config_dirs.results | map(attribute='path') | list }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ existing_dirs | difference(keep_dirs) }}"
+  register: containerd_old_registry_config_dirs
+
+- name: Set containerd restart flag
+  ansible.builtin.set_fact:
+    containerd_needs_restart: >-
+      {{ (containerd_proxy_config.changed | default(false)) or
+         (containerd_config.changed | default(false)) or
+         (containerd_registry_config.changed | default(false)) or
+         (containerd_old_registry_config_dirs.changed | default(false))
+         }}
+
+- name: Configure crictl to use containerd as the default runtime
+  ansible.builtin.copy:
+    src: crictl.yaml
+    dest: "/etc/crictl.yaml"
+    owner: "root"
+    mode: "0640"
+
+- name: Restart containerd if needed
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+    enabled: true
+    daemon-reload: "{{ (containerd_proxy_config.changed | default(false)) }}"
+  retries: 3
+  delay: 1
+  when: containerd_needs_restart
+
+- name: Wait for containerd CRI to be ready
+  changed_when: false
+  ansible.builtin.command: "crictl images ls -q"
+  register: containerd_ready
+  retries: 8
+  delay: 4
+  until: containerd_ready.rc == 0
+  when: containerd_needs_restart

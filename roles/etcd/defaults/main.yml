@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# Role: etcd-sysext - Default Variables
+# =============================================================================
+# This role assumes:
+#   - etcd sysext is loaded (binaries, user, service)
+#   - kubernetes sysext is loaded (kubeadm for cert generation)
+#   - Butane created /etc/etcd/etcd.env (placeholder) and /var/lib/etcd
+#   - furyctl create pki generated the CA in pki/etcd/
+# =============================================================================
+
+# etcd node name (default: FQDN from inventory_hostname)
+etcd_name: "{{ inventory_hostname }}"
+
+# Directories (fixed by sysext)
+etcd_config_dir: /etc/etcd
+etcd_certs_dir: /etc/etcd/pki
+etcd_data_dir: /var/lib/etcd
+
+# Network
+etcd_address: "{{ ansible_facts['default_ipv4'].address }}"
+
+# Client URLs - Listen on both localhost and node IP, but only advertise node IP
+etcd_listen_client_urls: "https://{{ ansible_facts['default_ipv4'].address }}:2379,https://127.0.0.1:2379"
+etcd_advertise_client_urls: "https://{{ ansible_facts['default_ipv4'].address }}:2379"
+
+# Metrics
+etcd_metrics_address: "{{ ansible_facts['default_ipv4'].address }}"
+etcd_metrics_port: 2378
+
+# Cluster (MUST be defined in inventory/group_vars or playbook)
+etcd_initial_cluster: ""
+etcd_initial_cluster_state: "new"
+# This is the Ansible group name that contains the etcd nodes, by default we consider
+# that etcd is deployed on control plane nodes
+etcd_ansible_group_name: "control_plane"
+
+# Local PKI path (where furyctl generated the CA)
+etcd_pki_local_dir: "{{ playbook_dir }}/../pki/etcd"
+
+# Certificate distribution (when etcd is separate from control plane)
+# remember to set etcd_ansible_group_name accordingly when etcd is separate
+etcd_on_control_plane: true
+etcd_certs:
+  - etcd/ca.crt
+  - apiserver-etcd-client.crt
+  - apiserver-etcd-client.key
+
+# Certificate renewal (for upgrades)
+etcd_upgrade: false

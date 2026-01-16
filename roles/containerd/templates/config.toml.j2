@@ -1,0 +1,66 @@
+version = 3
+root = '{{ containerd_storage_dir }}'
+state = '{{ containerd_state_dir }}'
+oom_score = {{ containerd_oom_score }}
+
+[grpc]
+  max_recv_message_size = {{ containerd_grpc_max_recv_message_size }}
+  max_send_message_size = {{ containerd_grpc_max_send_message_size }}
+
+
+[debug]
+  level = '{{ containerd_debug_level | default('info') }}'
+
+[metrics]
+  address = '{{ containerd_metrics_address | default('') }}'
+  grpc_histogram = {{ containerd_metrics_grpc_histogram | default(false) | lower }}
+
+[plugins]
+  [plugins.'io.containerd.cri.v1.images']
+    snapshotter = 'overlayfs'
+    disable_snapshot_annotations = true
+    discard_unpacked_layers = false
+    max_concurrent_downloads = 3
+    concurrent_layer_fetch_buffer = 0
+    image_pull_progress_timeout = '5m0s'
+    image_pull_with_sync_fs = false
+    stats_collect_period = 10
+    use_local_image_pull = false
+
+    [plugins.'io.containerd.cri.v1.images'.pinned_images]
+      sandbox = '{{ containerd_sandbox_image }}'
+
+    [plugins.'io.containerd.cri.v1.images'.registry]
+      config_path = '/etc/containerd/certs.d'
+
+    {% if containerd_registry_configs -%}
+      [plugins.'io.containerd.cri.v1.images'.registry.configs]
+      {% for registry_config in containerd_registry_configs -%}
+        {% if registry_config.username is defined and registry_config.password is defined -%}
+        [plugins.'io.containerd.cri.v1.images'.registry.configs.'{{registry_config.registry}}'.auth]
+          auth = '{{(registry_config.username + ':' + registry_config.password) | b64encode}}'
+        {% endif -%}
+      {% endfor -%}
+    {% endif %}
+
+    [plugins.'io.containerd.cri.v1.images'.image_decryption]
+      key_model = 'node'
+
+  [plugins.'io.containerd.cri.v1.runtime']
+    max_container_log_line_size = {{ containerd_max_container_log_line_size }}
+    device_ownership_from_security_context = {{ containerd_device_ownership_from_security_context | string | lower }}
+
+    [plugins.'io.containerd.cri.v1.runtime'.containerd]
+      default_runtime_name = 'runc'
+
+      [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes]
+        [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc]
+          runtime_type = 'io.containerd.runc.v2'
+          runtime_path = ''
+          privileged_without_host_devices = false
+          privileged_without_host_devices_all_devices_allowed = false
+          base_runtime_spec = ''
+          snapshotter = '{{ containerd_snapshotter | default('overlayfs') }}'
+
+          [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc.options]
+            SystemdCgroup = true

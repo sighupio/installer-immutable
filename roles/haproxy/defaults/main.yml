@@ -1,0 +1,19 @@
+---
+haproxy_configuration_file_path: "/etc/haproxy/haproxy.cfg"
+haproxy_container_image: "registry.sighup.io/fury/on-premises/haproxy"
+haproxy_container_tag: "3.2.9"
+haproxy_configuration: |
+  # example haproxy.cfg
+  global
+    maxconn 512
+  frontend stats
+    bind *:1936
+    mode http
+    log global
+    maxconn 10
+    timeout client 100s
+    stats enable
+    stats uri /stats
+    stats hide-version
+    stats refresh 30s
+    stats show-node

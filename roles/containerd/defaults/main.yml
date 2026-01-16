@@ -1,0 +1,55 @@
+---
+# The Kubernetes version is used to pick the right pause image.
+# We use the same variable name used in other roles for simplicity.
+kubernetes_version: "1.34.2"
+
+# Registry where to pull the pause (sandbox) image.
+# We use the same name used in other roles for simplicity.
+# Upstream registry is "k8s.gcr.io".
+kubernetes_image_registry: "registry.sighup.io/fury/on-premises"
+
+# Compatibility matrix between kubernetes versions and pause images. And maybe other components in the future.
+# Use this link to know which version of pause is needed:
+# https://github.com/kubernetes/kubernetes/blob/v1.33.4/cmd/kubeadm/app/constants/constants.go
+kubernetes_compatibility:
+  "1.34.2":
+    # Using pause 3.10.1 (we had it hardcoded before).
+    sandbox_image: "{{ kubernetes_image_registry }}/pause:3.10.1"
+  "1.33.6":
+    sandbox_image: "{{ kubernetes_image_registry }}/pause:3.10.1"
+
+# Calculate the containerd sandbox image based on the kubernetes version.
+containerd_sandbox_image: "{{ kubernetes_compatibility[kubernetes_version].sandbox_image }}"
+
+containerd_cfg_dir: "/etc/containerd"
+
+## CONTAINERD TOML SETTINGS
+containerd_systemd_dir: "/etc/systemd/system/containerd.service.d"
+containerd_storage_dir: "/var/lib/containerd"
+containerd_state_dir: "/run/containerd"
+containerd_oom_score: 0
+
+containerd_grpc_max_recv_message_size: 16777216
+containerd_grpc_max_send_message_size: 16777216
+containerd_debug_level: "info"
+
+containerd_metrics_address: ""
+containerd_metrics_grpc_histogram: false
+
+containerd_max_container_log_line_size: 16384
+
+containerd_device_ownership_from_security_context: false
+
+# Registries Auth and Mirrors configuration
+# You can add authentication details for registries and containerd will
+# automatically authenticate against them when pulling the images.
+# Notice that this will be deprecated in containerd v2:
+# https://github.com/containerd/containerd/blob/v1.7.0/docs/cri/registry.md#configure-registry-credentials
+containerd_registry_configs: []
+# Configuration must use the following format:
+# - registry: "myregistry:8080"
+#   username: "admin"
+#   password: "password"
+#   insecure_skip_verify: false
+#   mirror_endpoint:
+#     - "http://myregistry:8080"

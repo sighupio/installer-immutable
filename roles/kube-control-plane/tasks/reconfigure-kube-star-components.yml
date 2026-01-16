@@ -1,0 +1,98 @@
+---
+- name: Ensuring the kubeadm-config backup directory exists
+  ansible.builtin.file:
+    path: "{{ kubeadm_config_path }}/backups/"
+    state: directory
+    mode: "0755" # FIXME: this seems to be too permissive for a backup dir?
+
+- name: Ensure Kubernetes PKI backup directory exists
+  ansible.builtin.file:
+    path: "{{ kubeadm_config_path }}/backups/etc-kubernetes-pki/"
+    state: "directory"
+    mode: "0755" # FIXME: this seems to be too permissive for a backup dir?
+
+- name: Set timestamp
+  ansible.builtin.set_fact:
+    timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+
+- name: Backup current kubeadm-config configmap
+  ansible.builtin.shell: >
+    kubectl -n kube-system get cm kubeadm-config
+    -o yaml --kubeconfig /etc/kubernetes/admin.conf
+    > {{ kubeadm_config_path }}/backups/kubeadm-config-backup-{{ timestamp }}.yaml
+  changed_when: false
+
+- name: Load current kubeadm-config configmap
+  ansible.builtin.slurp:
+    src: "{{ kubeadm_config_path }}/backups/kubeadm-config-backup-{{ timestamp }}.yaml"
+  register: backup_file_content
+
+- name: Parse current kubeadm-config configmap
+  ansible.builtin.set_fact:
+    backup_content: "{{ backup_file_content.content | b64decode | from_yaml }}"
+
+- name: Extract current kubeadm-config certSANs
+  ansible.builtin.set_fact:
+    current_certsans: "{{ (backup_content.data.ClusterConfiguration | from_yaml).apiServer.certSANs | default([]) }}"
+
+- name: Load ClusterConfiguration template file content
+  ansible.builtin.slurp:
+    src: "{{ kubeadm_config_file }}"
+  register: template_file_content
+
+- name: Parse ClusterConfiguration template file
+  ansible.builtin.set_fact:
+    template_content: "{{ template_file_content.content | b64decode | from_yaml_all | list }}"
+
+- name: Extract ClusterConfiguration template certSANs
+  ansible.builtin.set_fact:
+    template_certsans: "{{ template_content[1].apiServer.certSANs | default([]) }}"
+
+- name: Compare certSANs
+  ansible.builtin.set_fact:
+    certsans_changed:
+      "{{ current_certsans | difference(template_certsans) | length > 0 or
+      template_certsans | difference(current_certsans) | length > 0 }}"
+
+- name: Show if certSANs change
+  ansible.builtin.debug:
+    msg: "certSANs changed: {{ certsans_changed }}"
+
+- name: Backup Kubernetes PKI directory
+  ansible.builtin.copy:
+    src: /etc/kubernetes/pki
+    dest: "{{ kubeadm_config_path }}/backups/etc-kubernetes-pki/etc-kubernetes-pki-{{ timestamp }}"
+    remote_src: true
+    mode: "preserve"
+    directory_mode: "0755" # FIXME: this seems to be too permissive for a backup dir?
+  when: certsans_changed
+
+- name: Remove current apiserver crt and key for later renew
+  ansible.builtin.command: |
+    rm /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.key
+  changed_when: true
+  when: certsans_changed
+
+# When changing the certSANs in the apiserver we have to write new certificates.
+- name: Renew apiserver crt and key with certSANs
+  ansible.builtin.command: |
+    kubeadm init phase certs apiserver --config {{ kubeadm_config_file }}
+  changed_when: true
+  when: certsans_changed
+
+# When changing the configuration we also have to keep the ClusterConfiguration
+# ConfigMap aligned with these changes.
+- name: Apply new kubeadm-config configmap
+  ansible.builtin.command: |
+    kubeadm init phase upload-config kubeadm --config {{ kubeadm_config_file }}
+  changed_when: true
+
+# By passing only the ClusterConfiguration object, the InitConfiguration patches are lost.
+# To fix this we need to pass the InitConfiguration object as well, using the kubeadm.yml.
+- name: Reflect ClusterConfiguration changes on control plane components
+  ansible.builtin.command: |
+    kubeadm init phase control-plane all --config {{ kubeadm_config_file }}
+  changed_when: true
+
+- name: Restart Kubelet
+  ansible.builtin.include_tasks: kubelet_restart.yml

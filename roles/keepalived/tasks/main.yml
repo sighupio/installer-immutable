@@ -1,0 +1,54 @@
+---
+- name: Copy check API server script
+  when: keepalived_cluster | bool and keepalived_on_controlplane | bool
+  ansible.builtin.template:
+    src: "check_api_server.sh.j2"
+    dest: /etc/keepalived/check_api_server.sh
+    mode: "700"
+  register: keepalived_api_check_script
+
+- name: Copy keepalived configuration file
+  when: keepalived_cluster | bool
+  register: keepalived_config
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: "600"
+
+- name: Set keepalived reload flag
+  ansible.builtin.set_fact:
+    keepalived_needs_reload: >-
+      {{ (keepalived_api_check_script.changed | default(false)) or
+         (keepalived_config.changed | default(false)) }}
+
+- name: Check keepalived configuration file for errors
+  when: keepalived_needs_reload
+  changed_when: false
+  ansible.builtin.command: keepalived --config-test
+
+- name: Reload keepalived if needed
+  ansible.builtin.systemd:
+    name: keepalived
+    state: reloaded
+  when: keepalived_needs_reload
+
+- name: Start keepalived service
+  when: keepalived_cluster | bool
+  ansible.builtin.systemd:
+    name: keepalived
+    enabled: true
+    state: started
+    masked: false
+
+- name: Verify keepalived service is running # noqa command-instead-of-module
+  when: keepalived_cluster | bool
+  changed_when: false
+  ansible.builtin.command: systemctl is-active keepalived
+
+- name: Disable keepalived service
+  when: not keepalived_cluster | bool
+  ansible.builtin.systemd:
+    name: keepalived
+    enabled: false
+    state: stopped
+    masked: true

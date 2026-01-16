@@ -1,0 +1,56 @@
+#jinja2: trim_blocks:False
+! /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id LVS_DEVEL
+    enable_script_security
+    script_user root
+}
+
+{% if keepalived_on_controlplane %}
+vrrp_script check_api_server {
+  script "/etc/keepalived/check_api_server.sh"
+  interval 3
+  weight -2
+  fall 10
+  rise 2
+}
+{% else %}
+vrrp_script check_haproxy {
+    script "/usr/bin/pidof haproxy"   # verify the pid existance
+    interval 2                         # check every 2 seconds
+    weight 2                           # add 2 points of prio if OK
+}
+{% endif %}
+
+vrrp_instance VI_1 {
+    state {% if ansible_facts['hostname'].endswith('1') %}MASTER{% else %}BACKUP{% endif %}
+    interface {{ keepalived_interface }}
+    virtual_router_id {{ keepalived_virtual_router_id }}
+    priority {% if ansible_facts['hostname'].endswith('1') %}101{% else %}100{% endif %}
+
+    unicast_peer {
+        {%- for host in groups[keepalived_ansible_group_name] %}
+        {%- if host != inventory_hostname %}
+        {{ hostvars[host]['ansible_facts'][keepalived_interface]['ipv4']['address'] }}
+        {%- endif %}
+        {%- endfor %}
+    }
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_passphrase }}
+    }
+
+    virtual_ipaddress {
+        {{ keepalived_ip }}
+    }
+
+    track_script {
+        {%- if keepalived_on_controlplane %}
+        check_api_server
+        {%- else %}
+        check_haproxy
+        {%- endif %}
+    }
+}

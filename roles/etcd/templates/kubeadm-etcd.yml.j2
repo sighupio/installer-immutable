@@ -1,0 +1,17 @@
+---
+# kubeadm configuration for etcd certificate generation
+# {{ ansible_managed }}
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+etcd:
+  local:
+    serverCertSANs:
+      - {{ inventory_hostname }}
+      - {{ inventory_hostname.split('.')[0] }}
+      - {{ etcd_address }}
+      - 127.0.0.1
+    peerCertSANs:
+      - {{ inventory_hostname }}
+      - {{ inventory_hostname.split('.')[0] }}
+      - {{ etcd_address }}
+certificatesDir: {{ etcd_certs_dir }}

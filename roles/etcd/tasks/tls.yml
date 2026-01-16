@@ -1,0 +1,53 @@
+---
+- name: Copy etcd CA to node
+  ansible.builtin.copy:
+    src: "{{ etcd_pki_local_dir }}/{{ item }}"
+    dest: "{{ etcd_certs_dir }}/etcd/{{ item }}"
+    owner: etcd
+    group: etcd
+    mode: "{{ '0400' if item.endswith('.key') else '0600' }}"
+  loop:
+    - ca.crt
+    - ca.key
+
+- name: Create kubeadm-etcd.yml configuration
+  ansible.builtin.template:
+    src: kubeadm-etcd.yml.j2
+    dest: "{{ etcd_config_dir }}/kubeadm-etcd.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Generate etcd certificates (server, peer, client)
+  ansible.builtin.command: >
+    kubeadm init phase certs {{ item }}
+    --config={{ etcd_config_dir }}/kubeadm-etcd.yml
+  loop:
+    - etcd-healthcheck-client
+    - etcd-peer
+    - etcd-server
+    - apiserver-etcd-client
+  register: etcd_cert_result
+  changed_when: >-
+    'already exist' not in etcd_cert_result.stdout and
+    'Using existing' not in etcd_cert_result.stdout
+
+- name: Find all generated etcd certificates
+  when: etcd_cert_result is changed
+  ansible.builtin.find:
+    paths:
+      - "/etc/etcd/pki"
+    recurse: true
+    file_type: file
+  register: etcd_files
+
+- name: Set correct ownership and permissions of etcd certificates files
+  when: etcd_cert_result is changed
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: etcd
+    group: etcd
+    state: file
+    recurse: false
+    mode: "{{ '0400' if item.endswith('.key') else '0600' }}"
+  loop: "{{ etcd_files.files | map(attribute='path') }}"

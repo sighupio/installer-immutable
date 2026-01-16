@@ -1,0 +1,83 @@
+---
+- name: Ensuring /etc/kubernetes exists
+  ansible.builtin.file:
+    name: "/etc/kubernetes"
+    state: directory
+    mode: "0700"
+
+- name: Ensuring /etc/kubernetes/manifests exists
+  when: kubelet_config_static_pod_path != ""
+  ansible.builtin.file:
+    name: "{{ kubelet_config_static_pod_path }}"
+    state: directory
+    mode: "0700"
+
+- name: Check if /etc/kubernetes/kubelet.conf exists
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: node_kubelet_conf
+
+- name: Writing kubeadm.yaml configuration file
+  register: kubeadm_config
+  ansible.builtin.template:
+    src: kubeadm.yml.j2
+    dest: "{{ kubeadm_config_file }}"
+    mode: "0600"
+
+- name: Validate kubeadm.yml configuration file
+  ansible.builtin.command: "kubeadm config validate --config {{ kubeadm_config_file }}"
+  when: kubeadm_config.changed
+  changed_when: false
+
+- name: Ensuring the kubelet-config directories exist
+  ansible.builtin.file:
+    path: "{{ kubelet_config_path }}/patches/"
+    state: directory
+    mode: "0700"
+
+- name: Generate KubeletConfiguration patches file
+  ansible.builtin.template:
+    src: KubeletConfiguration-v1beta1.yml.j2
+    dest: "{{ kubelet_config_path }}/patches/kubeletconfiguration.yaml"
+    mode: "0600"
+  register: kubelet_patches
+
+- name: Joining node to the Kubernetes cluster with kubeadm
+  ansible.builtin.command: "kubeadm join --config {{ kubeadm_config_file }}"
+  register: kubeadm_join
+  changed_when: kubeadm_join.rc == 0 and "This node has joined the cluster" in kubeadm_join.stdout
+  when:
+    - not node_kubelet_conf.stat.exists
+
+- name: Reconfigure Kubelet
+  # If kubelet.conf doesn't exist, kubeadm join will configure kubelet using the patches
+  when: kubelet_patches.changed and node_kubelet_conf.stat.exists
+  register: kubelet_reapply_config
+  # Note: this command does not show in its output if no changes were applied, even when nothing changes
+  # the configuration file is regenerated and the command logs the message:
+  # "The kubelet configuration for this node was successfully upgraded".
+  changed_when: kubelet_reapply_config.rc == 0 and
+    "The kubelet configuration for this node was successfully upgraded" in kubelet_reapply_config.stdout
+  ansible.builtin.command: >
+    kubeadm upgrade node phase kubelet-config --patches {{ kubelet_config_path }}/patches/
+
+- name: Restart and verify kubelet after reconfiguration
+  ansible.builtin.include_tasks: "kubelet_restart.yml"
+  when: kubelet_reapply_config.changed
+
+- name: Ensure kubelet config.yaml has restricted permissions
+  ansible.builtin.file:
+    path: /var/lib/kubelet/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  # This file is created when the node is joined to the cluster with '0644' permissions so we need to fix it only
+  # if kubeadm join was executed, reconfiguring the kubelet does not change permissions of this file.
+  when: not node_kubelet_conf.stat.exists
+
+- name: Ensure that the kubelet service config file exists and has correct permissions
+  ansible.builtin.file:
+    path: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+    owner: root
+    group: root
+    mode: "0644" # FIXME: This was 0600 on on-premises but in flatcar is readonly

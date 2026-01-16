@@ -1,0 +1,54 @@
+---
+# ===============================================================================
+# Role: etcd-sysext - etcd configuration for Flatcar with sysext
+# ===============================================================================
+# Prerequisites:
+#   - etcd sysext loaded (provides: binaries, user, service)
+#   - kubernetes or kubeadm sysext loaded (provides: kubeadm for cert generation)
+#   - furyctl create pki executed (CA in pki/etcd/)
+# ===============================================================================
+
+# Phase 1: Generate TLS certificates
+- name: Include TLS certificate generation
+  ansible.builtin.include_tasks: tls.yml
+
+# Phase 2: Configure etcd
+- name: Configure /etc/etcd/etcd.env
+  ansible.builtin.template:
+    src: etcd.env.j2
+    dest: "{{ etcd_config_dir }}/etcd.env"
+    owner: root
+    group: root
+    mode: "0644"
+  register: etcd_config
+
+- name: Copying etcdctl config envs
+  ansible.builtin.template:
+    src: etcdctl.sh.j2
+    dest: /etc/profile.d/etcdctl.sh
+    mode: "0644"
+
+- name: Restart etcd if configuration changed
+  ansible.builtin.systemd:
+    name: etcd
+    daemon_reload: true
+    state: restarted
+  when: etcd_config.changed
+
+# Phase 3: Enable and start etcd service
+- name: Enable and start etcd
+  ansible.builtin.systemd:
+    name: etcd
+    daemon_reload: true
+    enabled: true
+    state: started
+
+# Phase 4: Certificate renewal (conditional - only during upgrades)
+- name: Include certificate renewal
+  ansible.builtin.include_tasks: certs_renewal.yaml
+  when: etcd_upgrade | bool
+
+# Phase 5: Certificate distribution (conditional - when etcd is separate)
+- name: Include certificate distribution
+  ansible.builtin.include_tasks: certs_distribution.yaml
+  when: not (etcd_on_control_plane | bool) and etcd_cert_result.changed
