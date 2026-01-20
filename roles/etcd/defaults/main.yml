@@ -48,3 +48,6 @@ etcd_certs:
 
 # Certificate renewal (for upgrades)
 etcd_upgrade: false
+# These are the endpoints used to connect to etcd using etcdctl. Its value should be a list of the endpoints.
+# Example: ["https://<node_ip>:2379", "https://<node_ip2>:2379"]
+etcd_endpoints: []
