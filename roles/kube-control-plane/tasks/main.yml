@@ -42,7 +42,6 @@
     state: directory
     mode: "0755" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
 
-
 - name: Ensuring audit config file is present on machine
   ansible.builtin.copy:
     src: audit.yml
@@ -210,8 +209,8 @@
     flat: true
 
 - name: Reconfigure Kubelet
-  # If kubelet.conf doesn't exist, kubeadm init will configure kubelet using the patches
-  when: kubelet_patches.changed and not super_admin_conf_stat_result
+  # If super-admin.conf doesn't exist, kubeadm init will configure kubelet using the patches
+  when: kubelet_patches.changed and super_admin_conf_stat_result.stat.exists
   register: kubelet_reapply_config
   # Note: this command does not show in its output if no changes were applied, even when nothing changes
   # the configuration file is regenerated and the command logs the message:
