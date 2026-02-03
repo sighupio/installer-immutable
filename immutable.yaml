@@ -1,0 +1,76 @@
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+default_kubernetes_version: "1.33.4"
+
+kubernetes:
+  "1.33.4":
+    sysext:
+      - name: "containerd"
+        version: "2.1.4"
+        arch:
+          x86-64:
+            url: "https://extensions.flatcar.org/extensions/containerd/containerd-2.1.4-x86-64.raw"
+            sha256: "4512ddd60cf44221e3bff6b1285b6c82feb657816fbe22cf898e7a8ae0fa052f"
+          arm64:
+            url: "https://extensions.flatcar.org/extensions/containerd/containerd-2.1.4-arm64.raw"
+            sha256: "436b5669966c291377227104ee8bc1887c3bcc3fba90505d2f60ebc79ae58526"
+
+      - name: "kubernetes"
+        version: "v1.33.6"
+        version_major_minor: "v1.33"
+        arch:
+          x86-64:
+            url: "https://extensions.flatcar.org/extensions/kubernetes/kubernetes-v1.33.6-x86-64.raw"
+            sha256: "f29e97f22694281dbf63fa7f352f397aacd532bc7ff9dd9d5dc9e6beb3b8cae0"
+          arm64:
+            url: "https://extensions.flatcar.org/extensions/kubernetes/kubernetes-v1.33.6-arm64.raw"
+            sha256: "4b2bc33753df7f444a2af0f602a0f9a2330ada2b5d5c528ec9a92a692962a3f8"
+
+      - name: "etcd"
+        version: "3.6.6"
+        arch:
+          x86-64:
+            url: "file:///Users/smerlos/work/github.com/sighupio/fury-distribution/installers/immutable/dummy-assets/etcd-3.6.6-x86-64.raw"
+          arm64:
+            url: "file:///Users/smerlos/work/github.com/sighupio/fury-distribution/installers/immutable/dummy-assets/etcd-3.6.6-arm64.raw"
+
+      - name: "keepalived"
+        version: "v2.3.4"
+        arch:
+          x86-64:
+            url: "file:///Users/smerlos/work/github.com/sighupio/fury-distribution/installers/immutable/dummy-assets/keepalived-v2.3.4-x86-64.raw"
+          arm64:
+            url: "file:///Users/smerlos/work/github.com/sighupio/fury-distribution/installers/immutable/dummy-assets/keepalived-v2.3.4-arm64.raw"
+
+    flatcar:
+      version: "4459.2.2"
+      channel: "stable"
+      arch:
+        x86-64:
+          kernel:
+            filename: "flatcar_production_pxe.vmlinuz"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.2/flatcar_production_pxe.vmlinuz"
+            sha512: "a6d3514e771f51432548283c1eaa15f59da989029d484bce005bc9b00d34182c255a1e9a6edefe7033335a5be40c4253eac178ec26eb675785bc542bc2f230e6"
+          initrd:
+            filename: "flatcar_production_pxe_image.cpio.gz"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.2/flatcar_production_pxe_image.cpio.gz"
+            sha512: "aaa491032f7d14dd20d50b4c74d15c73a4c70391f94694cffcbcfadb4de219a370f9db1cf473708eb82d22f7d865580a0818af6ee74023cad603e6b89e5d7bea"
+          image:
+            filename: "flatcar_production_image.bin.bz2"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.2/flatcar_production_image.bin.bz2"
+            sha512: "e93cee4bc358a5edc614702c6445663d942be9ba3e00f8b70529d05d41589a588e6f5fdeb7d1e39d15d8fb10ac40e2e949f30a43ef89b08ac2e9bff4081b1d05"
+        arm64:
+          kernel:
+            filename: "flatcar_production_pxe.vmlinuz"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.2/flatcar_production_pxe.vmlinuz"
+            sha512: "63cbaad5d051a215d07441cfe7f7605586ad4e67064b09e52241cd7037df24e8ec5177ce8677013c19ef06fc06dd9fb14718e746f8a132dd0b883059a14c2d5c"
+          initrd:
+            filename: "flatcar_production_pxe_image.cpio.gz"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.2/flatcar_production_pxe_image.cpio.gz"
+            sha512: "b6764db718684f0a991e0209362c9112444e7fb6691a06d896113b91136ba1d744d704c90a1ed3017eef73d4afd11d991255241a76ff20a9d2124ff0be8299c4"
+          image:
+            filename: "flatcar_production_image.bin.bz2"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.2/flatcar_production_image.bin.bz2"
+            sha512: "88bc60a117edfdecaa265332c423284530fa05f1364313231987db0e9f9939be9a4a689b4313981a5b81a1357fab4465332aa656623b9f982c60ebd8b6b0fb23"
