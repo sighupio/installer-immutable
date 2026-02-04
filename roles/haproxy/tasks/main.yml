@@ -27,12 +27,12 @@
 # Copy the Kubernetes CA certificate for secure communication with the API server
 - name: Copy Kubernetes CA
   ansible.builtin.copy:
-    src: "{{ pki_dir }}/master/ca.crt"
+    src: "{{ kubernetes_local_pki_dir }}/ca.crt"
     dest: "{{ haproxy_configuration_file_path | dirname }}/kubernetes.crt"
     owner: root
     group: root
     mode: "0644"
-  when: pki_dir is defined
+  when: kubernetes_local_pki_dir is defined
 
 # Deploy the HAProxy configuration file from the template
 - name: Copy HAProxy configuration file
