@@ -45,7 +45,7 @@ kubernetes:
             url: "file:///Users/smerlos/work/github.com/sighupio/fury-distribution/installers/immutable/dummy-assets/keepalived-v2.3.4-arm64.raw"
 
     flatcar:
-      version: "4459.2.2"
+      version: "4459.2.3"
       channel: "stable"
       arch:
         x86-64:
