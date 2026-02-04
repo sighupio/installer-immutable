@@ -57,7 +57,7 @@
     --net-host
     --mount type=bind,src={{ haproxy_configuration_file_path | dirname }},dst=/usr/local/etc/haproxy/,options=rbind:ro
     {{ haproxy_container_image }}:{{ haproxy_container_tag }}
-    haproxy-check-{{ ansible_date_time.epoch }}
+    haproxy-check-{{ ansible_facts["date_time"]["epoch"] }}
     haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
   when: haproxy_config.changed
   changed_when: false
