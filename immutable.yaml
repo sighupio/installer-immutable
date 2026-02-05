@@ -98,6 +98,14 @@ kubernetes:
             url: "file:///Users/smerlos/work/github.com/sighupio/fury-distribution/installers/immutable/dummy-assets/keepalived-v2.3.4-x86-64.raw"
           arm64:
             url: "https://algozino.com.ar/flatcar/keepalived-v2.3.4-arm64.raw"
+
+      - name: "kubeadm"
+        version: "v1.34.3"
+        arch:
+          x86-64:
+            url: "https://algozino.com.ar/flatcar/kubeadm-v1.34.3-x86_64.raw"
+          arm64:
+            url: "https://algozino.com.ar/flatcar/kubeadm-v1.34.3-arm64.raw"
     flatcar:
       version: "4459.2.3"
       channel: "stable"
