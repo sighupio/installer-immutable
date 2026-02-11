@@ -28,9 +28,9 @@ kubernetes:
         version: "3.6.6"
         arch:
           x86-64:
-            url: "file:///Users/santiago.merlos/src/github.com/sighupio/furyctl/delete-me/etcd-3.6.6-x86-64.raw"
+            url: "https://algozino.com.ar/flatcar/etcd-3.6.6-x86-64.raw"
           arm64:
-            url: "https://algozino.com.ar/flatcar/etcd-3.6.7-arm64.raw"
+            url: "https://algozino.com.ar/flatcar/etcd-3.6.6-arm64.raw"
 
       - name: "keepalived"
         version: "v2.3.4"
@@ -87,7 +87,7 @@ kubernetes:
         version: "3.6.7"
         arch:
           x86-64:
-            url: "file:///Users/santiago.merlos/src/github.com/sighupio/furyctl/delete-me/etcd-3.6.6-x86-64.raw"
+            url: "https://algozino.com.ar/flatcar/etcd-3.6.7-x86-64.raw"
           arm64:
             url: "https://algozino.com.ar/flatcar/etcd-3.6.7-arm64.raw"
 
@@ -103,7 +103,7 @@ kubernetes:
         version: "v1.34.3"
         arch:
           x86-64:
-            url: "https://algozino.com.ar/flatcar/kubeadm-v1.34.3-x86_64.raw"
+            url: "https://algozino.com.ar/flatcar/kubeadm-v1.34.3-x86-64.raw"
           arm64:
             url: "https://algozino.com.ar/flatcar/kubeadm-v1.34.3-arm64.raw"
     flatcar:
