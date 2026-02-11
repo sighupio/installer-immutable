@@ -5,3 +5,4 @@ frontend prometheus
     mode http
     http-request use-service prometheus-exporter
     no log
+    timeout client 50s
