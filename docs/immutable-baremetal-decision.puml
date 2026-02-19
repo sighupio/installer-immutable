@@ -1,0 +1,95 @@
+@startuml Immutable Installer Decision Flow
+!theme cyborg
+
+title Immutable Installer - Decision Flow
+
+start
+
+:furyctl generates\nIgnition configs\nand PXE boot assets;
+note right
+  Generated based on
+  cluster configuration
+  and server MAC addresses
+end note
+
+:Bare Metal Installation\nRequired;
+
+if (DHCP Server Available\nin Network?) then (yes)
+  if (Can Modify DHCP\nConfiguration?) then (yes)
+    partition "Option 1: DHCP with PXE Flags" {
+      :Configure DHCP Server\nwith PXE boot flags;
+      note right
+        Point to furyctl's
+        iPXE server
+      end note
+      :Server boots via network;
+      :furyctl serves iPXE config\nbased on MAC address;
+    }
+  else (no)
+    partition "Option 2: iPXE ISO Boot" {
+      :Boot server from iPXE ISO\n(one-time manual boot);
+      note right
+        furyctl serves config
+        based on MAC address
+      end note
+      :furyctl provides iPXE config;
+    }
+  endif
+else (no)
+  if (Can Deploy DHCP\nServer?) then (yes)
+    partition "Option 3: Deploy DHCP + PXE" {
+      :Deploy new DHCP Server;
+      :Configure DHCP\nwith PXE boot flags;
+      note right
+        Point to furyctl's
+        iPXE server
+      end note
+      :Server boots via network;
+      :furyctl serves iPXE config\nbased on MAC address;
+    }
+  else (no)
+    partition "Option 4: Manual Boot with OS ISO" {
+      :Boot with Flatcar OS ISO;
+      :Manual network configuration;
+      :Run OS install\npointing to furyctl server;
+      note right
+        furyctl serves Ignition
+        based on MAC address
+      end note
+      :furyctl provides configuration;
+    }
+  endif
+endif
+
+:iPXE Script Executes;
+note right
+  furyctl-generated script:
+  - Flatcar kernel/initrd URLs
+  - Ignition config URL
+  - Network configuration
+end note
+
+:Download Flatcar assets\n(kernel + initrd);
+
+:Ignition configuration\nis served;
+
+:Boot Flatcar\nwith Ignition config;
+
+:Ignition applies during boot\n(partitioning, users, services, etc.);
+
+:System boots with\neverything configured;
+
+stop
+
+legend right
+  |= Option |= Network |= DHCP |= Manual Steps |= furyctl Automation |
+  | 1. DHCP + PXE | Required | Existing | DHCP config only | Full |
+  | 2. iPXE ISO | Required | Any | One-time boot | Full |
+  | 3. Deploy DHCP | Required | Deploy new | DHCP setup | Full |
+  | 4. OS ISO | Required | None | Boot + Network + Install | Ignition only |
+
+  **furyctl** automatically generates Ignition configs and serves them
+  via iPXE server based on server MAC addresses
+endlegend
+
+@enduml
