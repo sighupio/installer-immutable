@@ -70,14 +70,19 @@
     mode: "0644"
   register: haproxy_systemd_unit
 
-# Restart HAProxy service immediately after config or systemd unit changes (not as a handler)
+# Reload HAProxy configuration immediately after config changes without restarting the service (not as a handler)
+- name: Reload HAProxy configuration
+  ansible.builtin.command: ctr task kill -s HUP haproxy
+  when: haproxy_config.changed and not haproxy_systemd_unit.changed
+
+# Restart HAProxy service immediately after systemd unit changes (not as a handler)
 # This ensures the service is restarted with the new configuration before health checks
 - name: Restart HAProxy
   ansible.builtin.systemd:
     daemon_reload: true
     name: haproxy
     state: restarted
-  when: haproxy_config.changed or haproxy_systemd_unit.changed
+  when: haproxy_systemd_unit.changed
 
 # Ensure HAProxy service is enabled and running
 - name: Ensure HAProxy service is started
