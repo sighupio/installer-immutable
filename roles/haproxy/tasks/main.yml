@@ -11,7 +11,7 @@
 # prevent us from detecting updates to the image (i.e. re-tagging). Therefore, we always pull it.
 - name: Pull HAProxy container image
   ansible.builtin.command: >
-    ctr image pull {{ haproxy_container_image }}:{{ haproxy_container_tag }}
+    ctr image pull --hosts-dir "/etc/containerd/certs.d" {{ haproxy_container_image }}:{{ haproxy_container_tag }}
   register: haproxy_image_pull
   # We consider the task changed only if the image pulled has a different digest from the already present
   changed_when: haproxy_image_check.stdout_lines[-1].split()[2] !=
