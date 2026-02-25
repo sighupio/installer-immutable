@@ -8,34 +8,42 @@ kubernetes:
         version: "2.1.4"
         arch:
           x86-64:
-            url: "https://extensions.flatcar.org/extensions/containerd/containerd-2.1.4-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.1.4/containerd-2.1.4-x86-64.raw"
           arm64:
-            url: "https://extensions.flatcar.org/extensions/containerd/containerd-2.1.4-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.1.4/containerd-2.1.4-arm64.raw"
 
       - name: "kubernetes"
         version: "v1.33.6"
         version_major_minor: "v1.33"
         arch:
           x86-64:
-            url: "https://extensions.flatcar.org/extensions/kubernetes/kubernetes-v1.33.6-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.33.6/kubernetes-v1.33.6-x86-64.raw"
           arm64:
-            url: "https://extensions.flatcar.org/extensions/kubernetes/kubernetes-v1.33.6-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.33.6/kubernetes-v1.33.6-arm64.raw"
 
       - name: "etcd"
-        version: "3.6.6"
+        version: "v3.6.6"
         arch:
           x86-64:
-            url: "https://algozino.com.ar/flatcar/etcd-3.6.6-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-x86-64.raw"
           arm64:
-            url: "https://algozino.com.ar/flatcar/etcd-3.6.6-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-arm64.raw"
 
       - name: "keepalived"
         version: "v2.3.4"
         arch:
           x86-64:
-            url: "https://extensions.flatcar.org/extensions/keepalived/keepalived-v2.3.4-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-x86-64.raw"
           arm64:
-            url: "https://algozino.com.ar/flatcar/keepalived-v2.3.4-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-arm64.raw"
+
+      - name: "kubeadm"
+        version: "v1.33.6"
+        arch:
+          x86-64:
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.33.6/kubeadm-v1.33.6-x86-64.raw"
+          arm64:
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.33.6/kubeadm-v1.33.6-arm64.raw"
 
     flatcar:
       version: "4459.2.3"
@@ -67,42 +75,43 @@ kubernetes:
         version: "2.2.1"
         arch:
           x86-64:
-            url: "https://extensions.flatcar.org/extensions/containerd/containerd-2.2.1-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.2.1/containerd-2.2.1-x86-64.raw"
           arm64:
-            url: "https://extensions.flatcar.org/extensions/containerd/containerd-2.2.1-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.2.1/containerd-2.2.1-arm64.raw"
 
       - name: "kubernetes"
         version: "v1.34.4"
         version_major_minor: "v1.34"
         arch:
           x86-64:
-            url: "https://extensions.flatcar.org/extensions/kubernetes/kubernetes-v1.34.4-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.34.4/kubernetes-v1.34.4-x86-64.raw"
           arm64:
-            url: "https://extensions.flatcar.org/extensions/kubernetes/kubernetes-v1.34.4-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.34.4/kubernetes-v1.34.4-arm64.raw"
 
       - name: "etcd"
-        version: "3.6.7"
+        version: "v3.6.7"
         arch:
           x86-64:
-            url: "https://algozino.com.ar/flatcar/etcd-3.6.7-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.7/etcd-v3.6.7-x86-64.raw"
           arm64:
-            url: "https://algozino.com.ar/flatcar/etcd-3.6.7-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.7/etcd-v3.6.7-arm64.raw"
 
       - name: "keepalived"
         version: "v2.3.4"
         arch:
           x86-64:
-            url: "https://extensions.flatcar.org/extensions/keepalived/keepalived-v2.3.4-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-x86-64.raw"
           arm64:
-            url: "https://algozino.com.ar/flatcar/keepalived-v2.3.4-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-arm64.raw"
 
       - name: "kubeadm"
         version: "v1.34.4"
         arch:
           x86-64:
-            url: "https://algozino.com.ar/flatcar/kubeadm-v1.34.4-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.4/kubeadm-v1.34.4-x86-64.raw"
           arm64:
-            url: "https://algozino.com.ar/flatcar/kubeadm-v1.34.4-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.4/kubeadm-v1.34.4-arm64.raw"
+
     flatcar:
       version: "4459.2.3"
       channel: "stable"
