@@ -1,4 +1,4 @@
-# HAProxy
+# HAProxy Role for SD Immutable
 
 This Ansible role installs and configures HAproxy on a machine running on a container using `containerd` (no docker required).
 

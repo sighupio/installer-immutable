@@ -1,4 +1,4 @@
-# `sysctl` Ansible Role
+# `sysctl` Ansible Role for SD Immutable Kind
 
 The `sysctl` Ansible Role allows setting Kernel parameters via the sysctl CLI.
 

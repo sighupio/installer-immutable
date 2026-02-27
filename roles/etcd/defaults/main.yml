@@ -1,14 +1,4 @@
 ---
-# =============================================================================
-# Role: etcd-sysext - Default Variables
-# =============================================================================
-# This role assumes:
-#   - etcd sysext is loaded (binaries, user, service)
-#   - kubernetes sysext is loaded (kubeadm for cert generation)
-#   - Butane created /etc/etcd/etcd.env (placeholder) and /var/lib/etcd
-#   - furyctl create pki generated the CA in pki/etcd/
-# =============================================================================
-
 # etcd node name (default: FQDN from inventory_hostname)
 etcd_name: "{{ inventory_hostname }}"
 
