@@ -29,7 +29,7 @@ If you are new to SD please refer to the [official documentation][sd-docs] on ho
 
 ## Roles
 
-The following roles are included in the SIGHUP Distributino Immutable Installer:
+The following roles are included in the SIGHUP Distribution Immutable Installer:
 
 | Role                                           | Description                                                                      |
 | ---------------------------------------------- | -------------------------------------------------------------------------------- |
