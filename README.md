@@ -56,7 +56,7 @@ This installer is intended to be used via `furyctl` and not to be used stand-alo
 <!-- Links -->
 
 [furyctl-repo]: https://github.com/sighupio/furyctl/
-[compatibility-matrix]: https://github.com/sighupio/installer-immutable/blob/master/docs/COMPATIBILITY_MATRIX.md
+[compatibility-matrix]: https://github.com/sighupio/installer-immutable/blob/main/docs/COMPATIBILITY_MATRIX.md
 [sd-repo]: https://github.com/sighupio/distribution/
 [sd-docs]: https://docs.sighup.io/docs/distribution/
 [getting-started]: https://docs.sighup.io/docs/getting-started/distro-on-vms
