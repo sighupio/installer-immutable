@@ -51,7 +51,7 @@ Check the [compatibility matrix][compatibility-matrix] for additional informatio
 
 ## Usage
 
-This installer is intended to be used via `furyctl` and not be used stand-alone. Use at your own risk.
+This installer is intended to be used via `furyctl` and not to be used stand-alone. Use at your own risk.
 
 <!-- Links -->
 
