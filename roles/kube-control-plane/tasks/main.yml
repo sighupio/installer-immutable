@@ -3,7 +3,7 @@
   ansible.builtin.file:
     name: "/etc/kubernetes"
     state: directory
-    mode: "0755" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0755"
 
 - name: Ensure Kubernetes PKI directory is present
   ansible.builtin.file:
@@ -40,26 +40,26 @@
   ansible.builtin.file:
     name: "{{ audit_log_dir }}"
     state: directory
-    mode: "0755" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0755"
 
 - name: Ensuring audit config file is present on machine
   ansible.builtin.copy:
     src: audit.yml
     dest: "{{ audit_policy_config_path }}"
-    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0644"
 
 - name: Ensuring encryption config is present on machine
   ansible.builtin.copy:
     src: "{{ kubernetes_encryption_config }}"
     dest: "{{ kubernetes_remote_encryption_config }}"
-    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0644"
   when: kubernetes_encryption_config != ""
 
 - name: Writing kubeadm.yml configuration file
   ansible.builtin.template:
     src: kubeadm.yml.j2
     dest: "{{ kubeadm_config_file }}"
-    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0644"
   register: kubeadm_config
 
 - name: Validate kubeadm.yml configuration file
@@ -97,18 +97,17 @@
   ansible.builtin.template:
     src: patches/kube-scheduler0+json.json.j2
     dest: "{{ kubeadm_patches_path }}/kube-scheduler0+json.json"
-    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0644"
 
 - name: Copy kube-controller-manager patch files
   ansible.builtin.template:
     src: patches/kube-controller-manager0+json.json.j2
     dest: "{{ kubeadm_patches_path }}/kube-controller-manager0+json.json"
-    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0644"
 
 - name: Copy KubeletConfiguration patches file
   ansible.builtin.template:
     src: KubeletConfiguration-v1beta1.yml.j2
-    # TODO: check if we should use this path or `kubelet_config_path/patches/`
     dest: "{{ kubeadm_patches_path }}/kubeletconfiguration.yaml"
     mode: "0600"
   register: kubelet_patches
@@ -173,7 +172,7 @@
   ansible.builtin.file:
     name: "{{ kubernetes_users_kubeconfig_dir }}"
     state: directory
-    mode: "0755" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0755"
 
 - name: Creating Kubernetes Users with kubeadm
   ansible.builtin.shell: "kubeadm kubeconfig user
@@ -249,7 +248,7 @@
   ansible.builtin.copy:
     src: kubelet-csr-approver.yaml
     dest: /etc/kubernetes/kubelet-csr-approver.yaml
-    mode: "0644" # FIXME: I took the permissions from a control-plane node, but we need to confirm they are correct
+    mode: "0644"
 
 - name: Apply kubelet-csr-approver CronJob
   ansible.builtin.command: >
