@@ -1,13 +1,4 @@
 ---
-# ===============================================================================
-# Role: etcd-sysext - etcd configuration for Flatcar with sysext
-# ===============================================================================
-# Prerequisites:
-#   - etcd sysext loaded (provides: binaries, user, service)
-#   - kubernetes or kubeadm sysext loaded (provides: kubeadm for cert generation)
-#   - furyctl create pki executed (CA in pki/etcd/)
-# ===============================================================================
-
 # Phase 1: Generate TLS certificates
 - name: Include TLS certificate generation
   ansible.builtin.include_tasks: tls.yml
@@ -35,7 +26,6 @@
     state: restarted
   when: etcd_config.changed
 
-# Phase 3: Enable and start etcd service
 - name: Enable and start etcd
   ansible.builtin.systemd:
     name: etcd
@@ -43,12 +33,12 @@
     enabled: true
     state: started
 
-# Phase 4: Certificate renewal (conditional - only during upgrades)
+# Certificate renewal (conditional - only during upgrades)
 - name: Include certificate renewal
   ansible.builtin.include_tasks: certs_renewal.yaml
   when: etcd_upgrade | bool
 
-# Phase 5: Certificate distribution (conditional - when etcd is separate)
+# Certificate distribution (conditional - when etcd is separate)
 - name: Include certificate distribution
   ansible.builtin.include_tasks: certs_distribution.yaml
   when: not (etcd_on_control_plane | bool) and etcd_cert_result.changed

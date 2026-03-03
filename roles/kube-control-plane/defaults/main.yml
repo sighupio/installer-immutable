@@ -21,7 +21,7 @@ kubernetes_svc_cidr: "10.96.0.0/16"
 # Kubernetes Cluster Name
 kubernetes_cluster_name: "immutable-dev"
 # cloud-provider flag removed from kube-apiserver in K8s v1.33+
-# Still used by kube-controller-manager and kubelet; also in kube-apiserver in supported versions 1.31 and 1.32
+# Still used by kube-controller-manager and kubelet
 kubernetes_cloud_provider: ""
 # cloud-config flag removed from kube-apiserver in K8s v1.33+
 kubernetes_cloud_config: ""

@@ -18,11 +18,14 @@ Here's a list of the most relevant configuration options of the role. For a full
 | ----------------------- | ------------------------------------------------------------------------------ | ------------- |
 | `etcd_on_control_plane` | Determines whether etcd is running or not on Kubernetes control plane nodes[1] | `true`        |
 | `etcd_endpoints`        | List of endpoints used to connect to etcd using etcdctl                        | `[]`          |
-| `etcd_initial_cluster`  | Comma-sperated list of the initial cluster members [2]                         | ``            |
+| `etcd_initial_cluster`  | Comma-sperated list of the initial cluster members [2]                         |               |
 | `etcd_pki_local_dir`    | Path to the folder that contains the PKI (CA and certificates) for etcd [3]    | `../pki/etcd` |
 
+
 [1] When etcd is not running on the control plane nodes there are tasks that will run like copying the needed certificates.
+
 [2] Important to set this parameter, otherwise the etcd cluster won't start.
+
 [3] Expected folder structure is the one from the output of the `furyctl create pki` command.
 
 [immutable-sysext]: https://github.com/sighupio/installer-immutable-sysext

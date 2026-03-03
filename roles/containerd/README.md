@@ -30,25 +30,28 @@ These assumptions have been verified with:
 
 Here's a list of the most relevant configuration options of the role. For a full list see the [defaults file](./defaults/main.yaml).
 
-| Variable                                          | Description                                            | Default Value                              |
-| ------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------ |
-| `http_proxy`                                      | HTTP Proxy (HTTP_PROXY) Configuration for containerd   | `Unset`                                    |
-| `https_proxy`                                     | HTTPS Proxy (HTTPS_PROXY) Configuration for containerd | `Unset`                                    |
-| `no_proxy`                                        | NO Proxy (NO_PROXY) Configuration for containerd       | `Unset`                                    |
-| containerd_systemd_dir                            | Directory for containerd systemd service drop-in files | `/etc/systemd/system/containerd.service.d` |
-| containerd_storage_dir                            | Directory where containerd stores data                 | `/var/lib/containerd`                      |
-| containerd_state_dir                              |                                                        | `/run/containerd`                          |
-| containerd_oom_score                              |                                                        | 0                                          |
-| containerd_grpc_max_recv_message_size             |                                                        | 16777216                                   |
-| containerd_grpc_max_send_message_size             |                                                        | 16777216                                   |
-| containerd_debug_level                            |                                                        | `info`                                     |
-| containerd_metrics_address                        |                                                        | ``                                         |
-| containerd_metrics_grpc_histogram                 |                                                        | false                                      |
-| containerd_max_container_log_line_size            |                                                        | 16384                                      |
-| containerd_device_ownership_from_security_context |                                                        | false                                      |
-| containerd_registry_configs                       | Array with registries mirror and auth configuration[1] | []                                         |
+| Variable                                            | Description                                               | Default Value                              |
+| --------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------ |
+| `http_proxy`                                        | HTTP Proxy (HTTP_PROXY) Configuration for containerd[1]   | `Unset`                                    |
+| `https_proxy`                                       | HTTPS Proxy (HTTPS_PROXY) Configuration for containerd[1] | `Unset`                                    |
+| `no_proxy`                                          | NO Proxy (NO_PROXY) Configuration for containerd[1]       | `Unset`                                    |
+| `containerd_systemd_dir`                            | Directory for containerd systemd service drop-in files    | `/etc/systemd/system/containerd.service.d` |
+| `containerd_storage_dir`                            | Directory where containerd stores data                    | `/var/lib/containerd`                      |
+| `containerd_state_dir`                              |                                                           | `/run/containerd`                          |
+| `containerd_oom_score`                              |                                                           | `0`                                        |
+| `containerd_grpc_max_recv_message_size`             |                                                           | `16777216`                                 |
+| `containerd_grpc_max_send_message_size`             |                                                           | `16777216`                                 |
+| `containerd_debug_level`                            |                                                           | `info`                                     |
+| `containerd_metrics_address`                        |                                                           |                                            |
+| `containerd_metrics_grpc_histogram`                 |                                                           | `false`                                    |
+| `containerd_max_container_log_line_size`            |                                                           | `16384`                                    |
+| `containerd_device_ownership_from_security_context` |                                                           | `false`                                    |
+| `containerd_registry_configs`                       | Array with registries mirror and auth configuration[2]    | `[]`                                       |
 
-[1] configuration must use the following format:
+
+[1] Can also be configured system-wde: https://www.flatcar.org/docs/latest/setup/systemd/environment-variables/#system-wide-environment-variables
+
+[2] Configuration must use the following format:
 
 ```yaml
 - registry: "upstream-registry.example.com"
