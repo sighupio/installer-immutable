@@ -232,14 +232,6 @@
   # if kubeadm join was executed, reconfiguring the kubelet does not change permissions of this file.
   when: not super_admin_conf_stat_result.stat.exists
 
-# FIXME: this fails in flatcar because /usr is read-only
-- name: Ensure that the kubelet service config file exists and has correct permissions
-  ansible.builtin.file:
-    path: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
-    owner: root
-    group: root
-    mode: "0644" # FIXME: CIS Benchmark wants this 0600
-
 - name: Upgrade Kubernetes Control Plane
   ansible.builtin.include_tasks: upgrade.yml
   when: upgrade
