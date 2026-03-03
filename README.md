@@ -19,7 +19,7 @@ Kubernetes Installer for Immutable Kind
 <!-- <SD-DOCS> -->
 
 **Immutable Installer** is a Kubernetes installer for the [SIGHUP Distribution (SD)][sd-repo] that provides
-several Ansible roles to create a Kubernetes cluster on top of Flatcar Container Linux machines.
+several Ansible roles to create a Kubernetes cluster on top of [Flatcar Container Linux][flatcar-site] machines.
 
 If you are new to SD please refer to the [official documentation][sd-docs] on how to get started with SD.
 
@@ -61,6 +61,7 @@ This installer is intended to be used via `furyctl` and not to be used stand-alo
 [sd-docs]: https://docs.sighup.io/docs/distribution/
 [getting-started]: https://docs.sighup.io/docs/getting-started/distro-on-vms
 [immutable-sysext]: https://github.com/sighupio/installer-immutable-sysext
+[flatcar-site]: https://www.flatcar.org/
 
 <!-- </SD-DOCS> -->
 
