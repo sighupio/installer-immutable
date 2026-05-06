@@ -1,4 +1,12 @@
 ---
+- name: Ensure {{ sysctl_d_path }} directory exists
+  ansible.builtin.file:
+    path: "{{ sysctl_d_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 # Dump the current values before we change them, so the user can restore them if needed.
 # We do this because sysctl does not provide a way to know what is the default value for a parameter nor to reset it.
 # To reset a value you need to remove the custom value and reboot the system or manually set it again.
