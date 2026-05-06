@@ -46,38 +46,38 @@ kubernetes:
             url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.33.6/kubeadm-v1.33.6-arm64.raw"
 
     flatcar:
-      version: "4459.2.3"
+      version: "4081.3.7"
       channel: "stable"
       arch:
         x86-64:
           kernel:
             filename: "flatcar_production_pxe.vmlinuz"
-            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.3/flatcar_production_pxe.vmlinuz"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4081.3.7/flatcar_production_pxe.vmlinuz"
           initrd:
             filename: "flatcar_production_pxe_image.cpio.gz"
-            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.3/flatcar_production_pxe_image.cpio.gz"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4081.3.7/flatcar_production_pxe_image.cpio.gz"
           image:
             filename: "flatcar_production_image.bin.bz2"
-            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.3/flatcar_production_image.bin.bz2"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4081.3.7/flatcar_production_image.bin.bz2"
         arm64:
           kernel:
             filename: "flatcar_production_pxe.vmlinuz"
-            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.3/flatcar_production_pxe.vmlinuz"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4081.3.7/flatcar_production_pxe.vmlinuz"
           initrd:
             filename: "flatcar_production_pxe_image.cpio.gz"
-            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.3/flatcar_production_pxe_image.cpio.gz"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4081.3.7/flatcar_production_pxe_image.cpio.gz"
           image:
             filename: "flatcar_production_image.bin.bz2"
-            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.3/flatcar_production_image.bin.bz2"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4081.3.7/flatcar_production_image.bin.bz2"
   "1.34.4":
     sysext:
       - name: "containerd"
-        version: "2.2.1"
+        version: "2.3.0"
         arch:
           x86-64:
-            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.2.1/containerd-2.2.1-x86-64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.0/containerd-2.3.0-x86-64.raw"
           arm64:
-            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.2.1/containerd-2.2.1-arm64.raw"
+            url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.0/containerd-2.3.0-arm64.raw"
 
       - name: "kubernetes"
         version: "v1.34.4"
@@ -113,26 +113,26 @@ kubernetes:
             url: "https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.4/kubeadm-v1.34.4-arm64.raw"
 
     flatcar:
-      version: "4459.2.3"
+      version: "4593.2.0"
       channel: "stable"
       arch:
         x86-64:
           kernel:
             filename: "flatcar_production_pxe.vmlinuz"
-            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.3/flatcar_production_pxe.vmlinuz"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4593.2.0/flatcar_production_pxe.vmlinuz"
           initrd:
             filename: "flatcar_production_pxe_image.cpio.gz"
-            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.3/flatcar_production_pxe_image.cpio.gz"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4593.2.0/flatcar_production_pxe_image.cpio.gz"
           image:
             filename: "flatcar_production_image.bin.bz2"
-            url: "https://stable.release.flatcar-linux.net/amd64-usr/4459.2.3/flatcar_production_image.bin.bz2"
+            url: "https://stable.release.flatcar-linux.net/amd64-usr/4593.2.0/flatcar_production_image.bin.bz2"
         arm64:
           kernel:
             filename: "flatcar_production_pxe.vmlinuz"
-            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.3/flatcar_production_pxe.vmlinuz"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4593.2.0/flatcar_production_pxe.vmlinuz"
           initrd:
             filename: "flatcar_production_pxe_image.cpio.gz"
-            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.3/flatcar_production_pxe_image.cpio.gz"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4593.2.0/flatcar_production_pxe_image.cpio.gz"
           image:
             filename: "flatcar_production_image.bin.bz2"
-            url: "https://stable.release.flatcar-linux.net/arm64-usr/4459.2.3/flatcar_production_image.bin.bz2"
+            url: "https://stable.release.flatcar-linux.net/arm64-usr/4593.2.0/flatcar_production_image.bin.bz2"
