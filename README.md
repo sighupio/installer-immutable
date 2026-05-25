@@ -53,6 +53,33 @@ Check the [compatibility matrix][compatibility-matrix] for additional informatio
 
 This installer is intended to be used via `furyctl` and not to be used stand-alone. Use at your own risk.
 
+## Lint & format
+
+The repository pins its lint and format toolchain through [`mise`](https://mise.jdx.dev/):
+
+```sh
+mise install
+```
+
+This installs:
+
+- `yamlfmt` 0.21.0
+- `yamllint` 1.38.0 (via `pipx:`)
+- `ansible-lint` 26.4.0 (via `pipx:`)
+
+Tasks live under `[tasks]` in `mise.toml` (no `Makefile`). Configuration is in `.yamlfmt`, `.yamllint`, and `.ansible-lint` at the repo root.
+
+| Task                   | What it does                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `mise run fmt`         | Rewrite YAML files in place with `yamlfmt`.                                  |
+| `mise run fmt-check`   | Check YAML formatting without writing; exits non-zero if changes are needed. |
+| `mise run lint`        | Run `yamllint` and `ansible-lint --profile production --strict`.             |
+| `mise run lint-prod`   | Alias of `mise run lint` (the `production` profile is the default).          |
+
+> Note: `mise run lint` runs `ansible-lint` with `profile: production` and `strict: true` by default — there is no looser local profile. Findings against this profile are tracked as follow-up work and are not gated by this section. Run `mise run fmt-check && mise run fmt` to clean YAML formatting drift before sending a PR.
+
+If the system already has a broken `/usr/bin/ansible-lint`, prefer `mise exec -- ansible-lint ...` or activate `mise` in your shell so the pinned version wins on `PATH`.
+
 <!-- Links -->
 
 [furyctl-repo]: https://github.com/sighupio/furyctl/

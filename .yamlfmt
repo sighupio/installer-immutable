@@ -1,0 +1,16 @@
+doublestar: true
+formatter:
+  type: basic
+  indent: 2
+  line_ending: lf
+  retain_line_breaks: true
+  scan_folded_as_literal: true
+  include_document_start: true
+  pad_line_comments: 1
+include:
+  - "**/*.yml"
+  - "**/*.yaml"
+exclude:
+  - ".git/**"
+  - "docs/**"
+  - ".ansible/**"

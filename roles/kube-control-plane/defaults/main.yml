@@ -10,7 +10,6 @@ audit_policy_max_age: 30
 audit_policy_max_size: 100
 audit_policy_max_backup: 10
 audit_policy_config_path: /etc/kubernetes/audit.yaml
-
 # Kubernetes PKI files
 kubernetes_local_pki_dir: "../pki/master"
 # The local API Server Endpoint
@@ -29,7 +28,7 @@ kubernetes_cloud_config: ""
 # Accepts a list of strings, in which each string can be either an IP Address or a domain
 kubernetes_apiserver_certSANs: []
 kubernetes_control_plane_address: "{{ ansible_facts['fqdn'] }}"
-kubernetes_version: "1.34.4"
+kubernetes_version: "1.34.8"
 kubernetes_image_registry: "registry.sighup.io/fury/on-premises"
 coredns_image_prefix: "{{ dependencies[kubernetes_version].coredns_image_prefix | default('/coredns') }}"
 # This will be used as the Kubernetes node name
@@ -40,14 +39,12 @@ kubernetes_users_org: sighup
 kubernetes_users_kubeconfig_dir: /etc/kubernetes/users
 kubernetes_encryption_config: ""
 kubernetes_remote_encryption_config: "/etc/kubernetes/encryption-config.yml"
-
 # TODO: may be choose a different name for the variable? Something that starts with `kubernetes_` for consistency?
 # What if we reuse `etcd_client_address` from etcd role?
 etcd_endpoints: ["https://127.0.0.1:2379"]
 etcd_ca_file: "/etc/etcd/pki/etcd/ca.crt"
 etcd_key_file: "/etc/etcd/pki/apiserver-etcd-client.key"
 etcd_cert_file: "/etc/etcd/pki/apiserver-etcd-client.crt"
-
 ## OIDC
 oidc_issuer_url: ""
 oidc_client_id: ""
@@ -56,13 +53,10 @@ oidc_username_claim: email
 oidc_username_prefix: "oidc:"
 oidc_groups_claim: groups
 oidc_groups_prefix: "oidc:"
-
 # FIXME: better name for this variable? `kubernetes_upgrade` for example
 upgrade: false
-
 ## Controller Manager
 terminated_pod_gc_threshold: 500
-
 ## Admission plugins
 eventratelimits:
   - type: Server
@@ -76,7 +70,6 @@ eventratelimits:
     qps: 20
     burst: 100
     cacheSize: 4096
-
 ## Kubelet
 kubelet_config_streaming_connection_idle_timeout: "5m"
 kubelet_config_read_only_port: 0
@@ -86,7 +79,6 @@ kubelet_config_cgroup_driver: "systemd"
 # kubelet_config_tls_cert_file: /var/lib/kubelet/pki/kubelet.crt
 # kubelet_config_tls_private_key_file: /var/lib/kubelet/pki/kubelet.key
 kubelet_certificate_authority_file: /etc/kubernetes/pki/ca.crt
-
 ## Encryption
 tls_cipher_suites:
   - TLS_AES_128_GCM_SHA256
@@ -100,7 +92,6 @@ tls_cipher_suites:
   - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
   - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
   - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-
 kubelet_tls_cipher_suites:
   - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
   - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256

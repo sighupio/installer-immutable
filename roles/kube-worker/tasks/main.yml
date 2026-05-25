@@ -56,8 +56,7 @@
   # Note: this command does not show in its output if no changes were applied, even when nothing changes
   # the configuration file is regenerated and the command logs the message:
   # "The kubelet configuration for this node was successfully upgraded".
-  changed_when: kubelet_reapply_config.rc == 0 and
-    "The kubelet configuration for this node was successfully upgraded" in kubelet_reapply_config.stdout
+  changed_when: kubelet_reapply_config.rc == 0 and "The kubelet configuration for this node was successfully upgraded" in kubelet_reapply_config.stdout
   ansible.builtin.command: >
     kubeadm upgrade node phase kubelet-config --patches {{ kubelet_config_path }}/patches/
 

@@ -1,0 +1,17 @@
+---
+profile: production
+strict: true
+
+exclude_paths:
+  - .git/
+  - .ansible/
+  - docs/
+
+# skip_list: empty by intent. If a rule needs skipping, add an entry here
+# with a comment line above explaining WHY (incident, infra constraint, etc.).
+skip_list: []
+
+# enable_list: production profile already enables the full strict set.
+enable_list: []
+
+use_default_rules: true

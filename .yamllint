@@ -1,0 +1,26 @@
+---
+extends: default
+
+ignore: |
+  .git/
+  docs/
+
+rules:
+  line-length:
+    max: 220
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+  document-start:
+    present: true
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+    require-starting-space: true
+  comments-indentation: disable
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
