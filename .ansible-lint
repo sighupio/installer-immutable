@@ -7,9 +7,20 @@ exclude_paths:
   - .ansible/
   - docs/
 
-# skip_list: empty by intent. If a rule needs skipping, add an entry here
-# with a comment line above explaining WHY (incident, infra constraint, etc.).
-skip_list: []
+# skip_list: rules skipped with justification.
+skip_list:
+  # role-name: roles use hyphens (kube-control-plane, kube-worker) matching k8s conventions — renaming would break existing playbooks
+  - role-name
+  # var-naming[no-role-prefix]: containerd role uses kubernetes_* vars shared across roles; prefixing would break callers
+  - var-naming[no-role-prefix]
+  # var-naming[pattern]: kubernetes_apiserver_certSANs uses camelCase to match kubeadm API field name exactly
+  - var-naming[pattern]
+  # no-handler: inline when-changed tasks intentional — ordering and sequencing constraints prevent handler extraction
+  - no-handler
+  # no-changed-when: haproxy reload idempotency managed externally via config validation task
+  - no-changed-when
+  # name[template]: sysctl_d_path used at start of name for readability; cosmetic only
+  - name[template]
 
 # enable_list: production profile already enables the full strict set.
 enable_list: []
