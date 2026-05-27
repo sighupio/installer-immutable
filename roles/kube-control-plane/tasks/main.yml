@@ -175,11 +175,7 @@
     mode: "0755"
 
 - name: Creating Kubernetes Users with kubeadm
-  ansible.builtin.shell: "kubeadm kubeconfig user
-    --config={{ kubeadm_config_file }}
-    --client-name={{ item }}
-    --org={{ kubernetes_users_org }}
-    > {{ kubernetes_users_kubeconfig_dir }}/{{ item }}.kubeconfig"
+  ansible.builtin.shell: "kubeadm kubeconfig user --config={{ kubeadm_config_file }} --client-name={{ item }} --org={{ kubernetes_users_org }} > {{ kubernetes_users_kubeconfig_dir }}/{{ item }}.kubeconfig"
   with_items: "{{ kubernetes_users_names }}"
   changed_when: true
   # No need to create the users in all the control plane nodes
@@ -214,8 +210,7 @@
   # Note: this command does not show in its output if no changes were applied, even when nothing changes
   # the configuration file is regenerated and the command logs the message:
   # "The kubelet configuration for this node was successfully upgraded".
-  changed_when: kubelet_reapply_config.rc == 0 and
-    "The kubelet configuration for this node was successfully upgraded" in kubelet_reapply_config.stdout
+  changed_when: kubelet_reapply_config.rc == 0 and "The kubelet configuration for this node was successfully upgraded" in kubelet_reapply_config.stdout
   ansible.builtin.command: kubeadm upgrade node phase kubelet-config --patches {{ kubeadm_patches_path }}
 
 - name: Restart and verify kubelet after reconfiguration

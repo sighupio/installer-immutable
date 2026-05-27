@@ -50,9 +50,7 @@
 
 - name: Compare certSANs
   ansible.builtin.set_fact:
-    certsans_changed:
-      "{{ current_certsans | difference(template_certsans) | length > 0 or
-      template_certsans | difference(current_certsans) | length > 0 }}"
+    certsans_changed: "{{ current_certsans | difference(template_certsans) | length > 0 or template_certsans | difference(current_certsans) | length > 0 }}"
 
 - name: Show if certSANs change
   ansible.builtin.debug:

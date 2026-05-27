@@ -1,0 +1,23 @@
+[tools]
+yamlfmt = "0.21.0"
+"pipx:yamllint" = "1.38.0"
+"pipx:ansible-lint" = "26.4.0"
+
+[tasks.lint]
+description = "Run yamllint + ansible-lint (production profile, strict)"
+run = [
+  "yamllint .",
+  "ansible-lint --profile production --strict",
+]
+
+[tasks.fmt]
+description = "Format YAML in place with yamlfmt"
+run = "yamlfmt"
+
+[tasks."fmt-check"]
+description = "Check YAML formatting without writing"
+run = "yamlfmt -lint"
+
+[tasks."lint-prod"]
+description = "Alias of lint (production profile is the default)"
+depends = ["lint"]
