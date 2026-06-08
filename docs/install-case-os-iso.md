@@ -7,9 +7,10 @@
 
 Use this case as the **fallback** when the segment has **no [DHCP][dhcp] server and you cannot deploy one** (an
 isolated or air-gapped environment). There is no network boot here: you boot the [Flatcar][flatcar] OS ISO and
-install manually. Only the [Ignition][ignition] config is served by [`furyctl`][furyctl]; everything else is
-hands-on. The target node can be **bare metal or a virtual machine** — for a VM, the OS ISO is attached as a
-virtual CD-ROM.
+install manually — fetching furyctl's per-MAC [Ignition][ignition] by hand instead of via [iPXE][ipxe].
+[`furyctl`][furyctl]'s role is the same as in every other case (see the
+[shared flow](IMMUTABLE_INSTALL.md#shared-flow-every-case)); here you just drive the boot yourself. The target
+node can be **bare metal or a virtual machine** — for a VM, the OS ISO is attached as a virtual CD-ROM.
 
 ## Flow
 
@@ -33,8 +34,10 @@ virtual CD-ROM.
    curl -sf http://<furyctl-host>:8080/status >/dev/null && echo "furyctl reachable"
    ```
 
-3. **Install Flatcar to disk**, using furyctl's per-MAC install Ignition. `flatcar-install` takes a local file,
-   so fetch it first. The MAC in the path is hyphen-separated and **uppercase** (e.g. `52-54-00-10-00-01`):
+3. **Install Flatcar to disk — this is stage 1 (the live install)**, the manual equivalent of what the
+   network-boot cases trigger via iPXE: you fetch the **same** `install-flatcar.json` furyctl serves and run
+   `flatcar-install` with it. It takes a local file, so fetch it first. The MAC in the path is hyphen-separated
+   and **uppercase** (e.g. `52-54-00-10-00-01`):
 
    ```sh
    curl -fsSL http://<furyctl-host>:8080/ignition/<MAC>/install-flatcar.json -o ignition.json
@@ -42,12 +45,14 @@ virtual CD-ROM.
    sudo reboot
    ```
 
-4. The node reboots from disk into [Flatcar][flatcar] with Ignition applied and continues through the shared
-   flow.
+4. **Stage 2 (final config) runs automatically.** The node reboots from disk into [Flatcar][flatcar], applies the
+   embedded `node-configuration.json`, reports `booted` to furyctl's `/status`, and continues through the
+   [shared flow](IMMUTABLE_INSTALL.md#shared-flow-every-case) — identical to every other case from here on.
 
 <!-- Links -->
 
 [dhcp]: https://datatracker.ietf.org/doc/html/rfc2131
+[ipxe]: https://ipxe.org/
 [flatcar]: https://www.flatcar.org/
 [ignition]: https://coreos.github.io/ignition/
 [furyctl]: https://github.com/sighupio/furyctl/

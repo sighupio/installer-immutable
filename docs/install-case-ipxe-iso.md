@@ -23,7 +23,7 @@ a VM, the ISO is attached as a virtual CD-ROM instead of a physical USB stick.
 
    > **TODO (script):** the iPXE ISO with the embedded bootstrap script is produced by a generator script
    > (planned: `scripts/build-ipxe-iso.sh`). **This script is not implemented yet** — this step is a
-   > placeholder. Once available, it will take the furyctl iPXE server address and emit a bootable
+   > placeholder. Once available, it will take the furyctl boot-server address and emit a bootable
    > `ipxe.iso`.
 
    **Interim (manual), until the script exists:** boot any [iPXE][ipxe] media (the upstream `ipxe.iso` or a
