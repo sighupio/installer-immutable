@@ -1,4 +1,4 @@
-@startuml Immutable Installer Decision Flow
+@startuml immutable-baremetal-decision
 !theme cyborg
 
 title Immutable Installer - Decision Flow
@@ -12,7 +12,7 @@ note right
   and server MAC addresses
 end note
 
-:Bare Metal Installation\nRequired;
+:Install onto a node\n(bare metal or VM);
 
 if (DHCP Server Available\nin Network?) then (yes)
   if (Can Modify DHCP\nConfiguration?) then (yes)
@@ -61,15 +61,18 @@ else (no)
   endif
 endif
 
-:iPXE Script Executes;
-note right
-  furyctl-generated script:
-  - Flatcar kernel/initrd URLs
-  - Ignition config URL
-  - Network configuration
-end note
-
-:Download Flatcar assets\n(kernel + initrd);
+if (Network boot?\n(Options 1-3)) then (yes)
+  :iPXE Script Executes;
+  note right
+    furyctl-generated script:
+    - Flatcar kernel/initrd URLs
+    - Ignition config URL
+    - Network configuration
+  end note
+  :Download Flatcar assets\n(kernel + initrd);
+else (no - Option 4: OS ISO)
+  :flatcar-install writes the disk\nwith the served Ignition;
+endif
 
 :Ignition configuration\nis served;
 
@@ -79,17 +82,25 @@ end note
 
 :System boots with\neverything configured;
 
+:Ansible roles assemble the cluster\n(containerd, etcd, keepalived, haproxy,\nkube-control-plane, kube-worker, sysctl);
+note right
+  Provided by this repository
+  (post-boot). Result: a working
+  SD cluster, ready for Distribution.
+end note
+
 stop
 
 legend right
-  |= Option |= Network |= DHCP |= Manual Steps |= furyctl Automation |
-  | 1. DHCP + PXE | Required | Existing | DHCP config only | Full |
-  | 2. iPXE ISO | Required | Any | One-time boot | Full |
-  | 3. Deploy DHCP | Required | Deploy new | DHCP setup | Full |
-  | 4. OS ISO | Required | None | Boot + Network + Install | Ignition only |
+  |= Option |= Net boot |= DHCP |= Manual Steps |= furyctl Automation |
+  | 1. DHCP + PXE | Yes | Existing | DHCP config only | Full |
+  | 2. iPXE ISO | Yes | Any | One-time boot | Full |
+  | 3. Deploy DHCP | Yes | Deploy new | DHCP setup | Full |
+  | 4. OS ISO | No | None | Boot + Network + Install | Ignition only |
 
+  All cases apply to a **node** — bare metal **or** VM.
   **furyctl** automatically generates Ignition configs and serves them
-  via iPXE server based on server MAC addresses
+  via its boot server based on server MAC addresses
 endlegend
 
 @enduml

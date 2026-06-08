@@ -1,0 +1,22 @@
+@startuml immutable-case-dhcp-pxe
+!theme cyborg
+
+title Case 1 - Existing DHCP with PXE flags
+
+start
+
+:DHCP configured with PXE flags\npointing at furyctl's iPXE server;
+
+:Node powered on -> network-boots;
+note right
+  DHCP tells it where to
+  fetch the iPXE bootloader
+end note
+
+:furyctl serves the iPXE config\nbased on the node's MAC address;
+
+:Continue to the shared flow;
+
+stop
+
+@enduml

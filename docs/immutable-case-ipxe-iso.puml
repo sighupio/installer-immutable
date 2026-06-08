@@ -1,0 +1,23 @@
+@startuml immutable-case-ipxe-iso
+!theme cyborg
+
+title Case 2 - iPXE ISO boot
+
+start
+
+:Prepare an iPXE ISO with an\nembedded bootstrap script;
+note right
+  Generator script not yet
+  implemented (TODO); a manual
+  iPXE chain works meanwhile
+end note
+
+:Boot the node once from ISO/USB\n(the embedded iPXE script runs);
+
+:Script contacts furyctl, which serves\nthe iPXE config by MAC address;
+
+:Continue to the shared flow;
+
+stop
+
+@enduml
