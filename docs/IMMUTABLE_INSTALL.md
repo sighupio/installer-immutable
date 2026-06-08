@@ -36,34 +36,41 @@ whether you can change it. The decision tree is captured in the diagram below
 The four cases are **target-agnostic** — they apply whether the node is bare metal or a VM (a VM is just a node
 on a virtual network, with media attached as a virtual CD-ROM). Pick the one that matches your network:
 
-| Your network situation                    | Case document                                          | furyctl automation |
-| ----------------------------------------- | ------------------------------------------------------ | ------------------ |
-| [DHCP][dhcp] exists **and** you can modify it | [Existing DHCP with PXE flags](install-case-dhcp-pxe.md)   | Full           |
-| DHCP exists but you **cannot** modify it  | [iPXE ISO boot](install-case-ipxe-iso.md)                  | Full               |
-| No DHCP, but you **can deploy** one       | [Deploy a new DHCP + PXE](install-case-deploy-dhcp.md)     | Full               |
-| No DHCP **and** none deployable           | [Manual OS ISO install](install-case-os-iso.md)            | Ignition only      |
+| Your network situation                    | Case document                                          | What you set up |
+| ----------------------------------------- | ------------------------------------------------------ | --------------- |
+| [DHCP][dhcp] exists **and** you can modify it | [Existing DHCP with PXE flags](install-case-dhcp-pxe.md)   | Add UEFI HTTP-boot options to your existing DHCP |
+| DHCP exists but you **cannot** modify it  | [iPXE ISO boot](install-case-ipxe-iso.md)                  | Boot each node once from an iPXE ISO/USB (generator script is a TODO; manual chainload meanwhile) |
+| No DHCP, but you **can deploy** one       | [Deploy a new DHCP + PXE](install-case-deploy-dhcp.md)     | Deploy dnsmasq + an HTTP host for `ipxe.efi` |
+| No DHCP **and** none deployable           | [Manual OS ISO install](install-case-os-iso.md)            | Hand-install each node from the Flatcar OS ISO |
 
-Cases 1–3 converge on a network [iPXE][ipxe] boot; case 4 is the fully manual fallback where only the
-[Ignition][ignition] config is served by furyctl.
+**furyctl's own work is identical in every row** — it generates the boot assets, serves them over HTTP, waits
+for the nodes to report booted, and runs the Ansible roles (see [Shared flow](#shared-flow-every-case)). The
+rows differ only in the external boot setup **you** provide: cases 1–3 get the node to fetch furyctl's assets
+over the network via [iPXE][ipxe]; case 4 is the manual fallback where you fetch the same [Ignition][ignition]
+assets by hand. furyctl does **not** automate the [DHCP][dhcp]/PXE side in any case.
 
 ## Shared flow (every case)
 
 Whatever case bootstraps the node, the rest of the install is the same:
 
 1. **furyctl generates the assets.** From your cluster configuration and each node's **MAC address**,
-   [`furyctl`][furyctl] generates an [Ignition][ignition] config and the [PXE][pxe]/[iPXE][ipxe] boot assets,
-   then serves each node the right config **based on its MAC address**.
-2. **The node boots.** Per the chosen case, the node reaches furyctl's iPXE server; the iPXE script carries the
-   kernel/initrd URLs, the Ignition config URL, and the network configuration, and downloads the
-   [Flatcar][flatcar] assets (kernel + initrd).
-3. **Ignition applies.** furyctl serves the Ignition config for that MAC; Flatcar boots with it and Ignition
-   applies it during first boot — partitioning disks, creating users, writing network config, and enabling
-   services. The node comes up **fully configured**, with the pinned [systemd-sysext][sysext] component images
-   in place.
-4. **Ansible roles assemble the cluster.** The installer's [Ansible roles](../roles) bring up Kubernetes
-   itself — `containerd`, `etcd`, `keepalived` (the control-plane **VIP**), `haproxy` (APIServer load balancer),
-   `kube-control-plane` (which runs [`kubeadm`][kubeadm] to bootstrap the control plane), `kube-worker`, and
-   `sysctl` — turning a fleet of identical nodes into a working SD cluster, ready for the Distribution phase.
+   [`furyctl`][furyctl] generates **two** [Ignition][ignition] configs per node — `install-flatcar.json` and
+   `node-configuration.json` — plus the per-MAC [iPXE][ipxe] boot script and the [Flatcar][flatcar]
+   kernel/initrd/image and [systemd-sysext][sysext] assets, then serves each node the right files **based on its
+   MAC address**.
+2. **The node boots the live installer (stage 1).** Per the chosen case, the node reaches furyctl's HTTP server
+   and fetches its per-MAC iPXE script (`/boot/<MAC>`), which loads the Flatcar kernel/initrd and the
+   **`install-flatcar.json`** Ignition. Flatcar boots **live** and runs [`flatcar-install`][flatcar-install],
+   writing Flatcar to the install disk with this node's final config (`node-configuration.json`) embedded.
+3. **The node reboots into the installed system (stage 2).** On first **disk** boot, **`node-configuration.json`**
+   is applied — partitioning extra disks, creating the `core` user, writing network config, enabling services,
+   and placing the pinned [systemd-sysext][sysext] component images. The node then POSTs `booted` to furyctl's
+   `/status` endpoint.
+4. **furyctl waits, then Ansible assembles the cluster.** furyctl's boot server **blocks until every node reports
+   `booted`**; only then does it run the installer's [Ansible roles](../roles) — `containerd`, `etcd`, `keepalived`
+   (the control-plane **VIP**), `haproxy` (APIServer load balancer), `kube-control-plane` (which runs
+   [`kubeadm`][kubeadm] to bootstrap the control plane), `kube-worker`, and `sysctl` — turning a fleet of identical
+   nodes into a working SD cluster, ready for the Distribution phase.
 
 ## Installing with furyctl
 
@@ -78,7 +85,7 @@ every case:
    ```
 
 2. **Fill in `furyctl.yaml`** — the boot-server URL, an SSH key, and one entry per node (its **MAC address**,
-   install disk, and network). Minimal shape:
+   **architecture**, install disk, and network). Minimal shape:
 
    ```yaml
    apiVersion: kfd.sighup.io/v1alpha2
@@ -96,6 +103,7 @@ every case:
        nodes:
          - hostname: "ctrl01.example.local"
            macAddress: "52:54:00:10:00:01"   # keys this node's per-MAC boot + Ignition config
+           arch: "x86-64"                     # x86-64 | arm64 — furyctl resolves Flatcar/sysext assets per arch
            storage:
              installDisk: "/dev/sda"
            network:
@@ -130,16 +138,25 @@ every case:
    furyctl create pki
    ```
 
-4. **Apply.** The `infrastructure` phase brings up furyctl's boot server (iPXE + [Ignition][ignition] + Flatcar
-   assets) on `0.0.0.0:8080` and waits for the nodes to report booted:
+4. **Apply.** The `infrastructure` phase brings up furyctl's boot server and waits for the nodes to report booted:
 
    ```sh
    furyctl apply --phase infrastructure   # serves per-MAC configs — power on the nodes now
    furyctl apply                          # continue: kubernetes, distribution, plugins
    ```
 
-   You can also run the server standalone:
-   `furyctl serve --address 0.0.0.0 --port 8080 --path <workdir>/.furyctl/state/infrastructure/server`.
+   **What this server is.** A **plain HTTP file server** (default bind `0.0.0.0:8080`; override with
+   `spec.infrastructure.ipxeServer.bindAddress` / `bindPort`). It serves only static assets:
+
+   - `/boot/<MAC>` — the per-node iPXE boot script
+   - `/ignition/<MAC>/install-flatcar.json` and `/ignition/<MAC>/node-configuration.json` — the two Ignition stages
+   - `/assets/...` — Flatcar kernel/initrd/image and [systemd-sysext][sysext] packages
+   - `/status` — nodes POST here to report `booted`; furyctl blocks here until **all** nodes are booted
+
+   It does **not** run [DHCP][dhcp] or [TFTP][tftp], and it does **not** serve `ipxe.efi` — that network-boot
+   plumbing is the external setup your chosen case provides. You can also run the server standalone:
+   `furyctl serve --address 0.0.0.0 --port 8080 --path <workdir>/.../infrastructure/server` (flags: `-a` address,
+   `-p` port, `-x` path).
 
 ## Verify the cluster
 
@@ -161,8 +178,9 @@ is ready for the Distribution phase.
 [flatcar]: https://www.flatcar.org/
 [ignition]: https://coreos.github.io/ignition/
 [sysext]: https://www.freedesktop.org/software/systemd/man/latest/systemd-sysext.html
-[pxe]: https://ipxe.org/howto/chainloading
 [ipxe]: https://ipxe.org/
 [dhcp]: https://datatracker.ietf.org/doc/html/rfc2131
+[tftp]: https://datatracker.ietf.org/doc/html/rfc1350
+[flatcar-install]: https://www.flatcar.org/docs/latest/installing/bare-metal/installing-to-disk/
 [kubeadm]: https://kubernetes.io/docs/reference/setup-tools/kubeadm/
 [compatibility-matrix]: COMPATIBILITY_MATRIX.md

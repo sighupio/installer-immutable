@@ -5,7 +5,7 @@ title Case 3 - Deploy a new DHCP + PXE
 
 start
 
-:Deploy a new DHCP server with PXE flags\npointing at furyctl's iPXE server;
+:Deploy a new DHCP server with HTTP-boot flags\n(UEFI HTTP Boot -> ipxe.efi, then furyctl);
 
 :Node powered on -> network-boots\noff the new DHCP server;
 

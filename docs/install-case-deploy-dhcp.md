@@ -6,9 +6,9 @@
 ## When to use this case
 
 Use this case when the network segment **has no [DHCP][dhcp] server, but you are able to deploy one**. After
-standing up DHCP with [PXE][pxe] flags, the path is the same fully-automated network boot as the
-"existing DHCP" case. The target node can be **bare metal or a virtual machine** — for VMs, the new DHCP/PXE
-service is typically a small VM on the same virtual network.
+standing up DHCP for [UEFI HTTP Boot][uefi-httpboot], the path is the same fully-automated network boot as the
+"existing DHCP" case (**UEFI-only** — legacy BIOS is not supported). The target node can be **bare metal or a
+virtual machine** — for VMs, the new DHCP service is typically a small VM on the same virtual network.
 
 ## Flow
 
@@ -19,20 +19,26 @@ service is typically a small VM on the same virtual network.
 
 ## How to set it up
 
-[`furyctl`][furyctl] serves the iPXE script and [Ignition][ignition] config but **does not run DHCP or TFTP** —
-so the new DHCP service must hand plain PXE clients the iPXE bootloader (`ipxe.efi`) over TFTP and then chainload
-iPXE clients to furyctl. There is **no official [`dnsmasq`][dnsmasq] container** (dnsmasq ships only as source / distro
-packages), so — following the Flatcar / [matchbox][matchbox] ecosystem recommendation — we deploy the
-`quay.io/poseidon/dnsmasq` container: it does DHCP + TFTP + iPXE chainload in one command and **bundles the
-iPXE binaries** (`undionly.kpxe`, `ipxe.efi`), so there is nothing to build by hand.
+[`furyctl`][furyctl] serves the iPXE script and [Ignition][ignition] config but **does not run DHCP** — and it
+does **not** serve `ipxe.efi` either. So the new DHCP service must hand UEFI HTTP-Boot firmware the `ipxe.efi`
+bootloader over **[HTTP][http]** (no [TFTP][tftp]) and then chainload iPXE clients to furyctl. This path is
+**UEFI-only**: [UEFI HTTP Boot][uefi-httpboot] needs UEFI 2.5+ firmware; legacy BIOS cannot HTTP boot and is not
+supported here.
+
+There is **no official [`dnsmasq`][dnsmasq] container**, so — following the Flatcar / [matchbox][matchbox]
+ecosystem recommendation — we deploy `quay.io/poseidon/dnsmasq` for **DHCP**. But **dnsmasq has no built-in HTTP
+server**: it tells the firmware where to GET `ipxe.efi` but cannot serve it. So you also need a small **HTTP file
+server** for `ipxe.efi` ([nginx][nginx], [Caddy][caddy], or `python3 -m http.server`). The dnsmasq image bundles
+`ipxe.efi` in its (now-unused) TFTP root — copy it out, or download it from [boot.ipxe.org][ipxe-download] — and
+serve it from that HTTP host.
 
 Run the container on a host reachable on the node's network segment. There are **two equivalent ways** — pick
 whichever fits your workflow.
 
 ### Option A — declarative (config file, clean command)
 
-Copy [`examples/dnsmasq.conf`](examples/dnsmasq.conf) (validated with `dnsmasq --test`), set
-`<furyctl-host>` in it, then mount it into the container:
+Copy [`examples/dnsmasq.conf`](examples/dnsmasq.conf) (validated with `dnsmasq --test`), set `<furyctl-host>`
+and `<http-host>` (the HTTP server hosting `ipxe.efi`) in it, then mount it into the container:
 
 ```sh
 docker run --rm --cap-add=NET_ADMIN --net=host \
@@ -49,39 +55,42 @@ Same directives, no file — everything on the command line:
 ```sh
 docker run --rm --cap-add=NET_ADMIN --net=host quay.io/poseidon/dnsmasq -d -q \
   --dhcp-range=192.0.2.50,192.0.2.150,12h \
-  --enable-tftp --tftp-root=/var/lib/tftpboot \
+  --dhcp-vendorclass=set:httpboot,HTTPClient \
+  --dhcp-option-force=tag:httpboot,60,HTTPClient \
+  --dhcp-boot=tag:httpboot,http://<http-host>/ipxe.efi \
   --dhcp-userclass=set:ipxe,iPXE \
-  --dhcp-boot=tag:ipxe,http://<furyctl-host>:8080/boot/${mac:hexhyp} \
-  --dhcp-boot=ipxe.efi     # iPXE clients → furyctl URL above; everyone else → ipxe.efi (UEFI fleet)
+  --dhcp-boot=tag:ipxe,http://<furyctl-host>:8080/boot/${mac:hexhyp}
 ```
 
-> **Mixed BIOS + UEFI fleet?** The single `--dhcp-boot=ipxe.efi` fallback assumes a UEFI fleet (the modern
-> default — bare metal and every hypervisor). Only if you also have legacy-BIOS nodes do you need to match
-> architecture ([option 93][rfc4578], because BIOS firmware cannot run `ipxe.efi`); replace that fallback with:
-> `--dhcp-match=set:bios,option:client-arch,0 --dhcp-boot=tag:bios,undionly.kpxe` and
-> `--dhcp-match=set:efi,option:client-arch,7 --dhcp-boot=tag:efi,ipxe.efi`.
+> **BIOS not supported.** UEFI HTTP Boot requires UEFI 2.5+ firmware; legacy-BIOS (and pre-2.5-UEFI) nodes have
+> no HTTP client and cannot use this case.
 
 ### Then, either way
 
 1. Start furyctl so its iPXE/Ignition boot server is serving per-MAC configs — see
    [Installing with furyctl](IMMUTABLE_INSTALL.md#installing-with-furyctl) (`furyctl apply --phase infrastructure`).
-2. Set each node to **network boot** and power it on. It net-boots via the container, chainloads to furyctl,
-   pulls its config, boots [Flatcar][flatcar], and continues through the shared flow.
+2. Set each node to **UEFI network boot / HTTP Boot** and power it on. The firmware HTTP-boots `ipxe.efi` from
+   your HTTP server, iPXE chainloads to furyctl, pulls its config, boots [Flatcar][flatcar], and continues
+   through the shared flow.
 
 > **Why this image?** There is no Docker Official Image or verified-publisher dnsmasq container, so we use the
 > Flatcar/matchbox ecosystem recommendation: [`quay.io/poseidon/dnsmasq`][matchbox] (the matchbox project's
-> image, purpose-built for PXE + iPXE chainload). If you prefer not to run a third-party image, install the
-> distro `dnsmasq` package and supply the iPXE binaries yourself.
+> image) for **DHCP**. Its bundled `ipxe.efi` sits in the now-unused TFTP root, so for HTTP boot you serve that
+> file from a separate HTTP server (above). If you prefer, install the distro `dnsmasq` package instead.
 >
-> **Note:** the only value to fill in is `<furyctl-host>` (the host/IP running furyctl). The boot server
-> listens on port `8080` by default; `${mac:hexhyp}` is expanded by iPXE to each node's MAC, so one line
-> serves every node.
+> **Note:** two values to fill in — `<furyctl-host>` (the host/IP running furyctl) and `<http-host>` (the HTTP
+> server hosting `ipxe.efi`). The furyctl boot server listens on port `8080` by default; `${mac:hexhyp}` is
+> expanded by iPXE to each node's MAC, so one line serves every node.
 
 <!-- Links -->
 
 [dhcp]: https://datatracker.ietf.org/doc/html/rfc2131
-[pxe]: https://ipxe.org/howto/chainloading
-[rfc4578]: https://www.rfc-editor.org/rfc/rfc4578
+[http]: https://datatracker.ietf.org/doc/html/rfc9110
+[tftp]: https://datatracker.ietf.org/doc/html/rfc1350
+[uefi-httpboot]: https://ipxe.org/appnote/uefihttp
+[ipxe-download]: https://ipxe.org/download
+[nginx]: https://nginx.org/en/docs/
+[caddy]: https://caddyserver.com/docs/
 [dnsmasq]: https://thekelleys.org.uk/dnsmasq/doc.html
 [matchbox]: https://matchbox.psdn.io/network-setup/
 [furyctl]: https://github.com/sighupio/furyctl/

@@ -5,7 +5,7 @@ title Case 1 - Existing DHCP with PXE flags
 
 start
 
-:DHCP configured with PXE flags\npointing at furyctl's iPXE server;
+:DHCP configured with HTTP-boot flags\n(UEFI HTTP Boot -> ipxe.efi, then furyctl);
 
 :Node powered on -> network-boots;
 note right
