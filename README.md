@@ -53,6 +53,8 @@ Check the [compatibility matrix][compatibility-matrix] for additional informatio
 
 This installer is intended to be used via `furyctl` and not to be used stand-alone. Use at your own risk.
 
+For a walkthrough of how the Immutable kind installs a cluster — onto bare-metal **or** virtual machines — see the [Immutable Installation Guide][immutable-install]. It is an index: it shows the boot decision, the flow every case shares, and links to a focused document per case (DHCP+PXE, iPXE ISO, deploy DHCP, manual OS ISO). Key terms link to their official documentation inline.
+
 ## Lint & format
 
 The repository pins its lint and format toolchain through [`mise`](https://mise.jdx.dev/):
@@ -83,6 +85,7 @@ If the system already has a broken `/usr/bin/ansible-lint`, prefer `mise exec --
 <!-- Links -->
 
 [furyctl-repo]: https://github.com/sighupio/furyctl/
+[immutable-install]: docs/IMMUTABLE_INSTALL.md
 [compatibility-matrix]: https://github.com/sighupio/installer-immutable/blob/main/docs/COMPATIBILITY_MATRIX.md
 [sd-repo]: https://github.com/sighupio/distribution/
 [sd-docs]: https://docs.sighup.io/docs/distribution/

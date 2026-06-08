@@ -1,0 +1,20 @@
+@startuml immutable-case-os-iso
+!theme cyborg
+
+title Case 4 - Manual OS ISO install
+
+start
+
+:Boot from the Flatcar OS ISO\n(physical media or virtual CD-ROM);
+
+:Configure networking manually\non the live system;
+
+:Run the OS install pointed at furyctl's\nIgnition URL for the node's MAC;
+
+:Ignition applies during install / first boot;
+
+:Continue to the shared flow;
+
+stop
+
+@enduml
