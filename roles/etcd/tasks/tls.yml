@@ -51,3 +51,13 @@
     recurse: false
     mode: "{{ '0400' if item.endswith('.key') else '0600' }}"
   loop: "{{ etcd_files.files | map(attribute='path') }}"
+
+# The data directory holds all cluster secrets; lock it to the etcd user (mirrors on-prem's
+# check_etcd_file_permissions). 0700 on the directory prevents group/world traversal of the contents.
+- name: Lock down the etcd data directory
+  ansible.builtin.file:
+    path: "{{ etcd_data_dir }}"
+    owner: etcd
+    group: etcd
+    state: directory
+    mode: "0700"

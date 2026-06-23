@@ -1,0 +1,119 @@
+---
+# OS layer: stage Flatcar to the inactive partition + reboot, only when target OS > running (node pre-drained by the playbook).
+# Pin target version + group (channel) from immutable.yaml; the configured server stays os_update_server.
+- name: OS | Resolve the Flatcar target + channel from immutable.yaml
+  ansible.builtin.set_fact:
+    os_update_target_version: "{{ _os_manifest.kubernetes[kubernetes_version].flatcar.version }}"
+    os_update_group: "{{ _os_manifest.kubernetes[kubernetes_version].flatcar.channel | default(os_update_group) }}"
+  vars:
+    _os_manifest: "{{ lookup('file', immutable_manifest_path) | from_yaml }}"
+  when: os_update_target_version is not defined
+
+- name: OS | Write update-engine configuration
+  ansible.builtin.template:
+    src: update.conf.j2
+    dest: "{{ os_update_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+# Downgrades are not supported: /var state migrated by a newer OS may break an older one.
+- name: OS | Fail if the node runs a newer Flatcar than the target
+  ansible.builtin.assert:
+    that:
+      - not (ansible_facts['distribution_version'] is version(os_update_target_version, '>'))
+    fail_msg: >-
+      Node runs Flatcar {{ ansible_facts['distribution_version'] }}, newer than target
+      {{ os_update_target_version }}: downgrades are not supported
+
+- name: OS | Record whether the node is behind the target OS version
+  ansible.builtin.set_fact:
+    os_update_behind: "{{ ansible_facts['distribution_version'] is version(os_update_target_version, '<') }}"
+
+- name: OS | Stage and reboot into the target version
+  when: os_update_behind
+  block:
+    - name: OS | Unmask and start update-engine
+      ansible.builtin.systemd:
+        name: update-engine.service
+        masked: false
+        state: started
+
+    - name: OS | Check update-engine status
+      register: os_update_pre_status
+      changed_when: false
+      ansible.builtin.command:
+        cmd: update_engine_client -status
+
+    - name: OS | Discard a stale staged update
+      when: "'UPDATE_STATUS_UPDATED_NEED_REBOOT' in os_update_pre_status.stdout"
+      register: os_update_reset
+      changed_when: os_update_reset.rc == 0
+      ansible.builtin.command:
+        cmd: update_engine_client -reset_status
+
+    # Synchronous: blocks until the update is applied to the inactive partition.
+    - name: OS | Stage the Flatcar update (synchronous)
+      changed_when: true
+      ansible.builtin.command:
+        cmd: update_engine_client -update
+
+    - name: OS | Read the staged update status
+      register: os_update_status
+      changed_when: false
+      ansible.builtin.command:
+        cmd: update_engine_client -status
+
+    # Pin: only the marked version may be applied; discard + fail on anything else (never advance to a newer/unpinned one).
+    - name: OS | Refuse a staged version other than the pinned target
+      when: >-
+        'UPDATE_STATUS_UPDATED_NEED_REBOOT' not in os_update_status.stdout
+        or 'NEW_VERSION=' ~ os_update_target_version not in os_update_status.stdout
+      block:
+        - name: OS | Discard the unpinned staged update
+          changed_when: true
+          ansible.builtin.command:
+            cmd: update_engine_client -reset_status
+        - name: OS | Fail because the server did not stage the pinned version
+          ansible.builtin.fail:
+            msg: >-
+              Pinned Flatcar {{ os_update_target_version }} was not staged by {{ os_update_server }}
+              (group {{ os_update_group }}); refusing to apply a different version.
+              update_engine reported: {{ os_update_status.stdout }}
+
+    # Restore the default posture: OS updates stay disabled outside upgrades.
+    - name: OS | Mask and stop update-engine
+      ansible.builtin.systemd:
+        name: update-engine.service
+        state: stopped
+        masked: true
+
+    - name: OS | Reboot into the new OS version
+      ansible.builtin.reboot:
+        reboot_timeout: "{{ os_update_reboot_timeout }}"
+
+    - name: OS | Gather facts again after the reboot
+      ansible.builtin.setup:
+        filter: "ansible_distribution*"
+
+    - name: OS | Verify the node booted the target version
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution_version'] == os_update_target_version
+        fail_msg: >-
+          Node booted Flatcar {{ ansible_facts['distribution_version'] }} instead of
+          {{ os_update_target_version }}: the new version failed to boot and was rolled back
+
+    # update-engine is masked, so mark the GPT flags ourselves or GRUB rolls back on next reboot.
+    - name: OS | Mark the current usr partition as successful
+      register: os_update_mark_good
+      changed_when: os_update_mark_good.rc == 0
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          part="$(rootdev -s /usr)"
+          idx="$(cat /sys/class/block/"$(basename "${part}")"/partition)"
+          disk="/dev/$(lsblk -ndo pkname "${part}")"
+          cgpt add -i "${idx}" -S1 -T0 "${disk}"
+          [ "$(cgpt show -i "${idx}" -S "${disk}")" = "1" ]
+        executable: /bin/bash

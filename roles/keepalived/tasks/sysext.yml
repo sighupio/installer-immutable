@@ -1,0 +1,82 @@
+---
+# Align keepalived sysext to immutable.yaml; acts only when target > active (idempotent, no downgrade).
+- name: Keepalived sysext | Load immutable.yaml targets
+  ansible.builtin.set_fact:
+    sysext_targets: >-
+      {{ (lookup('file', immutable_manifest_path) | from_yaml).kubernetes[kubernetes_version].sysext
+         | items2dict(key_name='name', value_name='version') }}
+  when: sysext_targets is not defined
+
+- name: Keepalived sysext | Resolve target + active symlink
+  ansible.builtin.set_fact:
+    _sx_version: "{{ sysext_targets['keepalived'] }}"
+    _sx_link: "{{ sysext_active_dir }}/keepalived.raw"
+
+- name: Keepalived sysext | Stat the active symlink
+  ansible.builtin.stat:
+    path: "{{ _sx_link }}"
+  register: _sx_stat
+
+- name: Keepalived sysext | Align
+  when:
+    - _sx_stat.stat.exists
+    - _sx_stat.stat.islnk
+  block:
+    - name: Keepalived sysext | Resolve active vs target files
+      ansible.builtin.set_fact:
+        _sx_target_file: "keepalived-{{ _sx_version }}-{{ sysext_arch }}.raw"
+        _sx_active_version: >-
+          {{ _sx_stat.stat.lnk_target | basename
+             | regex_replace('^keepalived-', '')
+             | regex_replace('-' ~ sysext_arch ~ '\.raw$', '') }}
+
+    - name: Keepalived sysext | Stage {{ _sx_version }} (target > active)
+      when: >-
+        (_sx_version | regex_replace('^v', ''))
+        is version((_sx_active_version | regex_replace('^v', '')), '>')
+      block:
+        - name: Keepalived sysext | Ensure the store directory exists
+          ansible.builtin.file:
+            path: "{{ sysext_extensions_store }}/keepalived"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: Keepalived sysext | Download the target .raw (checksum-verified)
+          ansible.builtin.get_url:
+            url: "{{ sysext_release_base }}/keepalived-{{ _sx_version }}/{{ _sx_target_file }}"
+            dest: "{{ sysext_extensions_store }}/keepalived/{{ _sx_target_file }}"
+            checksum: "sha256:{{ sysext_release_base }}/keepalived-{{ _sx_version }}/SHA256SUMS"
+            owner: root
+            group: root
+            mode: "0644"
+
+        - name: Keepalived sysext | Switch the active symlink
+          ansible.builtin.file:
+            src: "{{ sysext_extensions_store }}/keepalived/{{ _sx_target_file }}"
+            dest: "{{ _sx_link }}"
+            state: link
+            force: true
+
+        - name: Keepalived sysext | Refresh the sysext overlay (in-band)
+          changed_when: true
+          ansible.builtin.command:
+            cmd: systemd-sysext refresh
+
+        - name: Keepalived sysext | Flag keepalived for restart
+          ansible.builtin.set_fact:
+            keepalived_sysext_changed: true
+
+        - name: Keepalived sysext | Prune old .raw files (keep current + previous)
+          ansible.builtin.shell:
+            cmd: |
+              set -euo pipefail
+              cd "{{ sysext_extensions_store }}/keepalived"
+              active="$(basename "$(readlink -f "{{ _sx_link }}")")"
+              ls -1t keepalived-*-{{ sysext_arch }}.raw \
+                | { grep -vxF "${active}" || true; } \
+                | tail -n +2 \
+                | xargs -r rm -f
+            executable: /bin/bash
+          changed_when: true

@@ -23,6 +23,21 @@
   changed_when: kubeadm_upgrade.rc == 0 and "[upgrade] SUCCESS" in kubeadm_upgrade.stdout
   ansible.builtin.command: "kubeadm upgrade apply --config {{ kubeadm_upgrade_config_file }}"
 
+# The patches dir is created on workers by kube-worker but not on control-plane nodes; ensure it before writing.
+- name: Ensure the kubelet-config patches directory exists
+  ansible.builtin.file:
+    path: "{{ kubelet_config_path }}/patches/"
+    state: directory
+    mode: "0700"
+
+# Back up the kubelet config before the patch is applied so the previous config is recoverable (mirrors on-prem).
+- name: Back up the current kubelet config before reconfiguring (upgrade)
+  ansible.builtin.copy:
+    src: /var/lib/kubelet/config.yaml
+    dest: "/var/lib/kubelet/config.yaml.bak-{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+    remote_src: true
+    mode: "0600"
+
 # TODO: why are we doing this after the upgrade? Why does it need to be re-generated?
 - name: Generate KubeletConfiguration patches file from template
   ansible.builtin.template:

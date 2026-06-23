@@ -1,4 +1,8 @@
 ---
+- name: Align kubernetes + kubeadm system extensions (upgrade)
+  ansible.builtin.include_tasks: sysext.yml
+  when: upgrade | bool
+
 - name: Ensuring /etc/kubernetes exists
   ansible.builtin.file:
     name: "/etc/kubernetes"
@@ -24,10 +28,22 @@
     dest: "{{ kubeadm_config_file }}"
     mode: "0600"
 
+# Validate only on a fresh join: an already-joined node won't re-join, so its kubeadm.yml join
+# discovery (empty bootstrap token on upgrade) must not be validated. `kubeadm upgrade node` reads
+# config from the cluster, not this file's discovery.
 - name: Validate kubeadm.yml configuration file
   ansible.builtin.command: "kubeadm config validate --config {{ kubeadm_config_file }}"
-  when: kubeadm_config.changed
+  when: kubeadm_config.changed and not node_kubelet_conf.stat.exists
   changed_when: false
+
+# Upgrade the node's kubelet config from the cluster; kubeadm no-ops when already at target.
+- name: Upgrade the worker node with kubeadm (upgrade)
+  ansible.builtin.command: "kubeadm upgrade node"
+  register: kubeadm_upgrade_node
+  changed_when: kubeadm_upgrade_node.rc == 0 and "The Kubelet configuration for this node was successfully upgraded" in kubeadm_upgrade_node.stdout
+  when:
+    - upgrade | bool
+    - node_kubelet_conf.stat.exists
 
 - name: Ensuring the kubelet-config directories exist
   ansible.builtin.file:
@@ -49,6 +65,15 @@
   when:
     - not node_kubelet_conf.stat.exists
 
+# Back up the kubelet config before reconfiguring so the previous config is recoverable (mirrors on-prem).
+- name: Back up the current kubelet config before reconfiguring (upgrade)
+  ansible.builtin.copy:
+    src: /var/lib/kubelet/config.yaml
+    dest: "/var/lib/kubelet/config.yaml.bak-{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+    remote_src: true
+    mode: "0600"
+  when: kubelet_patches.changed and node_kubelet_conf.stat.exists
+
 - name: Reconfigure Kubelet
   # If kubelet.conf doesn't exist, kubeadm join will configure kubelet using the patches
   when: kubelet_patches.changed and node_kubelet_conf.stat.exists
@@ -64,6 +89,14 @@
   ansible.builtin.include_tasks: "kubelet_restart.yml"
   when: kubelet_reapply_config.changed
 
+# Restart kubelet when only its binary changed (sysext swap, no config change) and no reboot will run.
+- name: Restart and verify kubelet after a kubernetes sysext swap (upgrade)
+  ansible.builtin.include_tasks: "kubelet_restart.yml"
+  when:
+    - upgrade | bool
+    - "'kubernetes' in (sysext_changed_components | default([]))"
+    - not (kubelet_reapply_config.changed | default(false))
+
 - name: Ensure kubelet config.yaml has restricted permissions
   ansible.builtin.file:
     path: /var/lib/kubelet/config.yaml
@@ -73,3 +106,8 @@
   # This file is created when the node is joined to the cluster with '0644' permissions so we need to fix it only
   # if kubeadm join was executed, reconfiguring the kubelet does not change permissions of this file.
   when: not node_kubelet_conf.stat.exists
+
+# OS stage + reboot last, after the kubeadm upgrade; reboots only when the Flatcar version increases.
+- name: Stage and activate the OS update (upgrade)
+  ansible.builtin.include_tasks: os.yml
+  when: upgrade | bool

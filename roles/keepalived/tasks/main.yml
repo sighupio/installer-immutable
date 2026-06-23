@@ -1,4 +1,8 @@
 ---
+- name: Align the keepalived system extension (upgrade)
+  ansible.builtin.include_tasks: sysext.yml
+  when: upgrade | bool
+
 - name: Copy check API server script
   when: keepalived_cluster | bool and keepalived_on_controlplane | bool
   ansible.builtin.template:
@@ -31,6 +35,15 @@
     name: keepalived
     state: reloaded
   when: keepalived_needs_reload
+
+# A sysext binary swap needs a restart (reload re-reads config, not the binary).
+- name: Restart keepalived if its system extension changed
+  ansible.builtin.systemd:
+    name: keepalived
+    state: restarted
+  when:
+    - keepalived_cluster | bool
+    - keepalived_sysext_changed | default(false)
 
 - name: Start keepalived service
   when: keepalived_cluster | bool

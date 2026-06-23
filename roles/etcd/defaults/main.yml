@@ -38,6 +38,18 @@ etcd_certs:
 
 # Certificate renewal (for upgrades)
 etcd_upgrade: false
+
+# --- sysext alignment (upgrade path, gated by etcd_upgrade) ---
+etcd_sysext_changed: false
+# Kubernetes version selects the sysext component set in immutable.yaml (same name used across roles).
+kubernetes_version: "1.34.8"
+# Shared sysext constants (active symlink dir + store are provisioned by butane at boot).
+sysext_release_base: "https://github.com/sighupio/installer-immutable-sysext/releases/download"
+sysext_extensions_store: /opt/extensions
+sysext_active_dir: /etc/extensions
+sysext_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64' }}"
+# immutable.yaml is the source of truth for sysext component versions; overridable for hand-runs.
+immutable_manifest_path: "{{ role_path }}/../../immutable.yaml"
 # These are the endpoints used to connect to etcd using etcdctl. Its value should be a list of the endpoints.
 # Example: ["https://<node_ip>:2379", "https://<node_ip2>:2379"]
 etcd_endpoints: []

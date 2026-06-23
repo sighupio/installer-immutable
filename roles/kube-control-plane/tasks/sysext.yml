@@ -1,0 +1,21 @@
+---
+# Align kubernetes + kubeadm sysext before the kubeadm CP upgrade so kubeadm resolves the new binaries.
+- name: CP sysext | Load immutable.yaml targets
+  ansible.builtin.set_fact:
+    sysext_targets: >-
+      {{ (lookup('file', immutable_manifest_path) | from_yaml).kubernetes[kubernetes_version].sysext
+         | items2dict(key_name='name', value_name='version') }}
+  when: sysext_targets is not defined
+
+- name: CP sysext | Reset the changed-components list
+  ansible.builtin.set_fact:
+    sysext_changed_components: []
+
+- name: CP sysext | Align kubernetes + kubeadm
+  ansible.builtin.include_tasks: sysext_component.yml
+  loop:
+    - kubernetes
+    - kubeadm
+  loop_control:
+    loop_var: sysext_component_name
+    label: "{{ sysext_component_name }}"

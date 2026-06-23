@@ -1,0 +1,75 @@
+---
+# Align one sysext (caller sets sysext_component_name) only when target > active; skip if no active symlink.
+- name: "Sysext({{ sysext_component_name }}) | Resolve target + active symlink"
+  ansible.builtin.set_fact:
+    _sx_version: "{{ sysext_targets[sysext_component_name] }}"
+    _sx_link: "{{ sysext_active_dir }}/{{ sysext_component_name }}.raw"
+
+- name: "Sysext({{ sysext_component_name }}) | Stat the active symlink"
+  ansible.builtin.stat:
+    path: "{{ _sx_link }}"
+  register: _sx_stat
+
+- name: "Sysext({{ sysext_component_name }}) | Align"
+  when:
+    - _sx_stat.stat.exists
+    - _sx_stat.stat.islnk
+  block:
+    - name: "Sysext({{ sysext_component_name }}) | Resolve active vs target files"
+      ansible.builtin.set_fact:
+        _sx_target_file: "{{ sysext_component_name }}-{{ _sx_version }}-{{ sysext_arch }}.raw"
+        _sx_active_version: >-
+          {{ _sx_stat.stat.lnk_target | basename
+             | regex_replace('^' ~ sysext_component_name ~ '-', '')
+             | regex_replace('-' ~ sysext_arch ~ '\.raw$', '') }}
+
+    - name: "Sysext({{ sysext_component_name }}) | Stage {{ _sx_version }} (target > active)"
+      when: >-
+        (_sx_version | regex_replace('^v', ''))
+        is version((_sx_active_version | regex_replace('^v', '')), '>')
+      block:
+        - name: "Sysext({{ sysext_component_name }}) | Ensure the store directory exists"
+          ansible.builtin.file:
+            path: "{{ sysext_extensions_store }}/{{ sysext_component_name }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: "Sysext({{ sysext_component_name }}) | Download the target .raw (checksum-verified)"
+          ansible.builtin.get_url:
+            url: "{{ sysext_release_base }}/{{ sysext_component_name }}-{{ _sx_version }}/{{ _sx_target_file }}"
+            dest: "{{ sysext_extensions_store }}/{{ sysext_component_name }}/{{ _sx_target_file }}"
+            checksum: "sha256:{{ sysext_release_base }}/{{ sysext_component_name }}-{{ _sx_version }}/SHA256SUMS"
+            owner: root
+            group: root
+            mode: "0644"
+
+        - name: "Sysext({{ sysext_component_name }}) | Switch the active symlink"
+          ansible.builtin.file:
+            src: "{{ sysext_extensions_store }}/{{ sysext_component_name }}/{{ _sx_target_file }}"
+            dest: "{{ _sx_link }}"
+            state: link
+            force: true
+
+        - name: "Sysext({{ sysext_component_name }}) | Refresh the sysext overlay (in-band)"
+          changed_when: true
+          ansible.builtin.command:
+            cmd: systemd-sysext refresh
+
+        - name: "Sysext({{ sysext_component_name }}) | Record as changed"
+          ansible.builtin.set_fact:
+            sysext_changed_components: "{{ sysext_changed_components + [sysext_component_name] }}"
+
+        - name: "Sysext({{ sysext_component_name }}) | Prune old .raw files (keep current + previous)"
+          ansible.builtin.shell:
+            cmd: |
+              set -euo pipefail
+              cd "{{ sysext_extensions_store }}/{{ sysext_component_name }}"
+              active="$(basename "$(readlink -f "{{ _sx_link }}")")"
+              ls -1t {{ sysext_component_name }}-*-{{ sysext_arch }}.raw \
+                | { grep -vxF "${active}" || true; } \
+                | tail -n +2 \
+                | xargs -r rm -f
+            executable: /bin/bash
+          changed_when: true

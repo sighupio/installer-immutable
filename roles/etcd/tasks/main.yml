@@ -1,4 +1,9 @@
 ---
+# Phase 0: Align the etcd system extension (upgrade)
+- name: Align the etcd system extension (upgrade)
+  ansible.builtin.include_tasks: sysext.yml
+  when: etcd_upgrade | bool
+
 # Phase 1: Generate TLS certificates
 - name: Include TLS certificate generation
   ansible.builtin.include_tasks: tls.yml
@@ -19,12 +24,51 @@
     dest: /etc/profile.d/etcdctl.sh
     mode: "0644"
 
-- name: Restart etcd if configuration changed
+# Certificate renewal runs BEFORE the restart so a single restart loads the renewed certs (upgrade only).
+- name: Include certificate renewal
+  ansible.builtin.include_tasks: certs_renewal.yaml
+  when: etcd_upgrade | bool
+
+# Quorum-safe restart: guard the cluster is healthy, restart once, then wait for this member to rejoin.
+- name: Determine whether etcd must be restarted
+  ansible.builtin.set_fact:
+    etcd_restart_required: "{{ etcd_config.changed or (etcd_sysext_changed | default(false)) or (etcd_certs_renewed | default(false)) }}"
+
+- name: Assert the etcd cluster is healthy before stopping this member (upgrade)
+  ansible.builtin.command: etcdctl endpoint health --cluster
+  environment:
+    ETCDCTL_CACERT: "{{ etcd_certs_dir }}/etcd/ca.crt"
+    ETCDCTL_CERT: "{{ etcd_certs_dir }}/apiserver-etcd-client.crt"
+    ETCDCTL_KEY: "{{ etcd_certs_dir }}/apiserver-etcd-client.key"
+    ETCDCTL_DIAL_TIMEOUT: "3s"
+  register: etcd_health_pre
+  changed_when: false
+  when:
+    - etcd_upgrade | bool
+    - etcd_restart_required | bool
+
+- name: Restart etcd if configuration, system extension, or certificates changed
   ansible.builtin.systemd:
     name: etcd
     daemon_reload: true
     state: restarted
-  when: etcd_config.changed
+  when: etcd_restart_required | bool
+
+- name: Wait for this etcd member to rejoin and the cluster to regain quorum (upgrade)
+  ansible.builtin.command: etcdctl endpoint health --cluster
+  environment:
+    ETCDCTL_CACERT: "{{ etcd_certs_dir }}/etcd/ca.crt"
+    ETCDCTL_CERT: "{{ etcd_certs_dir }}/apiserver-etcd-client.crt"
+    ETCDCTL_KEY: "{{ etcd_certs_dir }}/apiserver-etcd-client.key"
+    ETCDCTL_DIAL_TIMEOUT: "3s"
+  register: etcd_health_post
+  changed_when: false
+  until: etcd_health_post.rc == 0
+  retries: 12
+  delay: 5
+  when:
+    - etcd_upgrade | bool
+    - etcd_restart_required | bool
 
 - name: Enable and start etcd
   ansible.builtin.systemd:
@@ -32,11 +76,6 @@
     daemon_reload: true
     enabled: true
     state: started
-
-# Certificate renewal (conditional - only during upgrades)
-- name: Include certificate renewal
-  ansible.builtin.include_tasks: certs_renewal.yaml
-  when: etcd_upgrade | bool
 
 # Certificate distribution (conditional - when etcd is separate)
 - name: Include certificate distribution

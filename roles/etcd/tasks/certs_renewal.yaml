@@ -29,8 +29,7 @@
     - "kubeadm certs renew --cert-dir=/etc/etcd/pki --config=/etc/etcd/kubeadm-etcd.yml etcd-server"
   changed_when: true
 
-- name: Restarting etcd service
-  ansible.builtin.systemd:
-    name: etcd
-    daemon_reload: true
-    state: restarted
+# Restart is consolidated into a single quorum-safe restart in main.yml (guard -> restart -> wait).
+- name: Flag that etcd certificates were renewed
+  ansible.builtin.set_fact:
+    etcd_certs_renewed: true

@@ -227,9 +227,18 @@
   # if kubeadm join was executed, reconfiguring the kubelet does not change permissions of this file.
   when: not super_admin_conf_stat_result.stat.exists
 
+- name: Align kubernetes + kubeadm system extensions (upgrade)
+  ansible.builtin.include_tasks: sysext.yml
+  when: upgrade | bool
+
 - name: Upgrade Kubernetes Control Plane
   ansible.builtin.include_tasks: upgrade.yml
   when: upgrade
+
+# OS stage + reboot after the kubeadm upgrade (skew-safe); reboots only when the Flatcar version increases.
+- name: Stage and activate the OS update (upgrade)
+  ansible.builtin.include_tasks: os.yml
+  when: upgrade | bool
 
 - name: Ensuring kubelet-csr-approver.yaml file is present
   ansible.builtin.copy:

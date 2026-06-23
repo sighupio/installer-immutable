@@ -1,0 +1,82 @@
+---
+# Align etcd sysext to immutable.yaml (replaces on-prem's tarball unpack); acts only when target > active.
+- name: Etcd sysext | Load immutable.yaml targets
+  ansible.builtin.set_fact:
+    sysext_targets: >-
+      {{ (lookup('file', immutable_manifest_path) | from_yaml).kubernetes[kubernetes_version].sysext
+         | items2dict(key_name='name', value_name='version') }}
+  when: sysext_targets is not defined
+
+- name: Etcd sysext | Resolve target + active symlink
+  ansible.builtin.set_fact:
+    _sx_version: "{{ sysext_targets['etcd'] }}"
+    _sx_link: "{{ sysext_active_dir }}/etcd.raw"
+
+- name: Etcd sysext | Stat the active symlink
+  ansible.builtin.stat:
+    path: "{{ _sx_link }}"
+  register: _sx_stat
+
+- name: Etcd sysext | Align
+  when:
+    - _sx_stat.stat.exists
+    - _sx_stat.stat.islnk
+  block:
+    - name: Etcd sysext | Resolve active vs target files
+      ansible.builtin.set_fact:
+        _sx_target_file: "etcd-{{ _sx_version }}-{{ sysext_arch }}.raw"
+        _sx_active_version: >-
+          {{ _sx_stat.stat.lnk_target | basename
+             | regex_replace('^etcd-', '')
+             | regex_replace('-' ~ sysext_arch ~ '\.raw$', '') }}
+
+    - name: Etcd sysext | Stage {{ _sx_version }} (target > active)
+      when: >-
+        (_sx_version | regex_replace('^v', ''))
+        is version((_sx_active_version | regex_replace('^v', '')), '>')
+      block:
+        - name: Etcd sysext | Ensure the store directory exists
+          ansible.builtin.file:
+            path: "{{ sysext_extensions_store }}/etcd"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: Etcd sysext | Download the target .raw (checksum-verified)
+          ansible.builtin.get_url:
+            url: "{{ sysext_release_base }}/etcd-{{ _sx_version }}/{{ _sx_target_file }}"
+            dest: "{{ sysext_extensions_store }}/etcd/{{ _sx_target_file }}"
+            checksum: "sha256:{{ sysext_release_base }}/etcd-{{ _sx_version }}/SHA256SUMS"
+            owner: root
+            group: root
+            mode: "0644"
+
+        - name: Etcd sysext | Switch the active symlink
+          ansible.builtin.file:
+            src: "{{ sysext_extensions_store }}/etcd/{{ _sx_target_file }}"
+            dest: "{{ _sx_link }}"
+            state: link
+            force: true
+
+        - name: Etcd sysext | Refresh the sysext overlay (in-band)
+          changed_when: true
+          ansible.builtin.command:
+            cmd: systemd-sysext refresh
+
+        - name: Etcd sysext | Flag etcd for restart
+          ansible.builtin.set_fact:
+            etcd_sysext_changed: true
+
+        - name: Etcd sysext | Prune old .raw files (keep current + previous)
+          ansible.builtin.shell:
+            cmd: |
+              set -euo pipefail
+              cd "{{ sysext_extensions_store }}/etcd"
+              active="$(basename "$(readlink -f "{{ _sx_link }}")")"
+              ls -1t etcd-*-{{ sysext_arch }}.raw \
+                | { grep -vxF "${active}" || true; } \
+                | tail -n +2 \
+                | xargs -r rm -f
+            executable: /bin/bash
+          changed_when: true

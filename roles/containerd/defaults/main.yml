@@ -14,6 +14,17 @@ kubernetes_compatibility:
     sandbox_image: "{{ kubernetes_image_registry }}/pause:3.10.1"
 # Calculate the containerd sandbox image based on the kubernetes version.
 containerd_sandbox_image: "{{ kubernetes_compatibility[kubernetes_version].sandbox_image }}"
+# --- sysext alignment (upgrade path) ---
+# `upgrade` gates the sysext-align tasks; provisioning runs containerd without aligning.
+upgrade: false
+containerd_sysext_changed: false
+# Shared sysext constants (active symlink dir + store are provisioned by butane at boot).
+sysext_release_base: "https://github.com/sighupio/installer-immutable-sysext/releases/download"
+sysext_extensions_store: /opt/extensions
+sysext_active_dir: /etc/extensions
+sysext_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64' }}"
+# immutable.yaml is the source of truth for sysext component versions; overridable for hand-runs.
+immutable_manifest_path: "{{ role_path }}/../../immutable.yaml"
 containerd_cfg_dir: "/etc/containerd"
 ## CONTAINERD TOML SETTINGS
 containerd_systemd_dir: "/etc/systemd/system/containerd.service.d"

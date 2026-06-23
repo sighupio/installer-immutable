@@ -1,4 +1,8 @@
 ---
+- name: Align the containerd system extension (upgrade)
+  ansible.builtin.include_tasks: sysext.yml
+  when: upgrade | bool
+
 - name: Write containerd HTTP proxy configuration drop-in
   ansible.builtin.template:
     src: http-proxy.conf.j2
@@ -65,7 +69,8 @@
       {{ (containerd_proxy_config.changed | default(false)) or
          (containerd_config.changed | default(false)) or
          (containerd_registry_config.changed | default(false)) or
-         (containerd_old_registry_config_dirs.changed | default(false))
+         (containerd_old_registry_config_dirs.changed | default(false)) or
+         (containerd_sysext_changed | default(false))
          }}
 
 - name: Configure crictl to use containerd as the default runtime

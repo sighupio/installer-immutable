@@ -1,4 +1,24 @@
 ---
+# --- sysext alignment + worker upgrade (upgrade path, gated by `upgrade`) ---
+upgrade: false
+# Kubernetes version selects the sysext component set in immutable.yaml (same name used across roles).
+kubernetes_version: "1.34.8"
+# Shared sysext constants (active symlink dir + store are provisioned by butane at boot).
+sysext_release_base: "https://github.com/sighupio/installer-immutable-sysext/releases/download"
+sysext_extensions_store: /opt/extensions
+sysext_active_dir: /etc/extensions
+sysext_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64' }}"
+# immutable.yaml is the source of truth for sysext component versions; overridable for hand-runs.
+immutable_manifest_path: "{{ role_path }}/../../immutable.yaml"
+# --- OS layer (Flatcar stage + reboot, upgrade path) ---
+# os_update_target_version (Flatcar) is resolved from immutable.yaml at runtime.
+os_update_server: "https://public.update.sighup-prod.sighup.io/v1/update/"
+os_update_group: "stable"
+# Reboot is driven by this role inside the drained window; keep update-engine's own strategy off.
+os_update_reboot_strategy: "off"
+os_update_conf_path: "/etc/flatcar/update.conf"
+os_update_reboot_timeout: 600
+
 # We hardcode /etc/kubernetes because kubeadm expects to write files there, maybe we can change that in the future
 kubeadm_config_file: /etc/kubernetes/kubeadm.yml
 # kubelet-config is the actual name of the object
