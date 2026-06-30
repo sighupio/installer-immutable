@@ -18,6 +18,10 @@
   register: node_kubelet_conf
 
 - name: Writing kubeadm.yaml configuration file
+  # The kubeadm.yml join config carries the bootstrap token, only minted on install. On an already-joined
+  # node (upgrade), re-rendering it leaves the token empty and `kubeadm config validate` below fails. The
+  # join config is only needed to join, so skip writing/validating it when the node is already joined.
+  when: not node_kubelet_conf.stat.exists
   register: kubeadm_config
   ansible.builtin.template:
     src: kubeadm.yml.j2
@@ -50,8 +54,10 @@
     - not node_kubelet_conf.stat.exists
 
 - name: Reconfigure Kubelet
-  # If kubelet.conf doesn't exist, kubeadm join will configure kubelet using the patches
-  when: kubelet_patches.changed and node_kubelet_conf.stat.exists
+  # If kubelet.conf doesn't exist, kubeadm join will configure kubelet using the patches.
+  # Skip on the upgrade path: the post-reboot `kubeadm upgrade node --patches` (upgrade.yml) reapplies the
+  # same kubelet patches with the new binary, so this pre-reboot reconfigure+restart is pure redundancy.
+  when: kubelet_patches.changed and node_kubelet_conf.stat.exists and not (upgrade | default(false) | bool)
   register: kubelet_reapply_config
   # Note: this command does not show in its output if no changes were applied, even when nothing changes
   # the configuration file is regenerated and the command logs the message:
@@ -73,3 +79,24 @@
   # This file is created when the node is joined to the cluster with '0644' permissions so we need to fix it only
   # if kubeadm join was executed, reconfiguring the kubelet does not change permissions of this file.
   when: not node_kubelet_conf.stat.exists
+
+# Worker upgrade: stage the extensions, reboot to activate them at boot, then run kubeadm on the new binaries.
+- name: Upgrade the worker node
+  when: upgrade | default(false) | bool
+  block:
+    - name: Stage the Kubernetes system extensions for the worker upgrade
+      ansible.builtin.include_role:
+        name: sysext
+        tasks_from: align.yml
+      vars:
+        sysext_components:
+          - kubernetes
+          - kubeadm
+
+    - name: Reboot into the staged operating system and extensions
+      ansible.builtin.include_role:
+        name: os-upgrade
+        tasks_from: os_reboot.yml
+
+    - name: Upgrade the worker with kubeadm
+      ansible.builtin.include_tasks: upgrade.yml

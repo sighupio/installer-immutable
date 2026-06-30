@@ -1,0 +1,40 @@
+---
+# G5 (add-immutable-upgrade-gates): assert the Kubernetes version skew before invoking kubeadm. The worker's
+# live version is read via the controller (workers have no kubeconfig), and a jump greater than one minor is
+# refused before kubeadm runs, rather than trusting the immutable.yaml coupling alone. Skew 0 on an
+# already-upgraded node, so a re-run passes.
+- name: Read the worker's current Kubernetes version for the skew check
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} get node {{ kubernetes_hostname }}
+      -o jsonpath={.status.nodeInfo.kubeletVersion}
+      --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  delegate_to: localhost
+  register: kube_worker_skew_version
+  changed_when: false
+
+- name: Assert the Kubernetes version skew is within one minor
+  vars:
+    skew_current: "{{ kube_worker_skew_version.stdout | regex_replace('^v', '') }}"
+    skew_target: "{{ kubernetes_version | regex_replace('^v', '') }}"
+  ansible.builtin.assert:
+    that:
+      - skew_target.split('.')[0] | int == skew_current.split('.')[0] | int
+      - (skew_target.split('.')[1] | int - skew_current.split('.')[1] | int) | abs <= 1
+    fail_msg: >-
+      Kubernetes version-skew violation: target {{ skew_target }} is more than one minor from the worker's
+      current {{ skew_current }} — kubeadm upgrade refused
+    success_msg: "Version skew OK: {{ skew_current }} -> {{ skew_target }} (<= 1 minor)"
+
+# Worker Kubernetes upgrade: run kubeadm upgrade node (uses the kubeadm activated by the sysext layer) then restart
+# kubelet to pick up the new binary. The cordon/drain → uncordon envelope is handled by the 56 playbook.
+# --patches reapplies the node's kubelet config patch (written at provision) so a node-group's kubeletConfiguration
+# survives the upgrade.
+- name: Upgrade the node with kubeadm
+  ansible.builtin.command:
+    cmd: kubeadm upgrade node --patches {{ kubelet_config_path }}/patches/
+  register: kube_worker_kubeadm_upgrade
+  changed_when: kube_worker_kubeadm_upgrade.rc == 0
+
+- name: Restart kubelet to pick up the new system extension
+  ansible.builtin.include_tasks: kubelet_restart.yml

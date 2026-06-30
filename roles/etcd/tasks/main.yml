@@ -24,7 +24,9 @@
     name: etcd
     daemon_reload: true
     state: restarted
-  when: etcd_config.changed
+  # On an upgrade run the unconditional restart in certs_renewal.yaml already picks up the new etcd.env
+  # (templated above before that restart), so this earlier restart is a redundant quorum-affecting outage.
+  when: etcd_config.changed and not (etcd_upgrade | default(false) | bool)
 
 - name: Enable and start etcd
   ansible.builtin.systemd:
@@ -32,6 +34,16 @@
     daemon_reload: true
     enabled: true
     state: started
+
+# Stage the etcd extension during an upgrade; the new binary activates at the control-plane reboot, not by an in-band restart.
+- name: Align the etcd system extension during upgrade
+  ansible.builtin.include_role:
+    name: sysext
+    tasks_from: align.yml
+  vars:
+    sysext_components:
+      - etcd
+  when: etcd_upgrade | bool
 
 # Certificate renewal (conditional - only during upgrades)
 - name: Include certificate renewal
