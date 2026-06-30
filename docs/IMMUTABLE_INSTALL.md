@@ -22,7 +22,8 @@ The Immutable kind is **alpha** and is driven entirely by [`furyctl`][furyctl] �
   every node can reach over the network.
 - **Per node:** its **MAC address**, the **install disk** (e.g. `/dev/sda`), and its network settings
   (static IP / gateway / DNS, or DHCP).
-- **An SSH public key** — injected into every node for `core`-user access.
+- **An SSH key pair** — the public key is injected into every node for `core`-user access, and furyctl uses
+  the private key to connect after boot.
 - **`kubectl`** on the furyctl host, to verify the cluster afterwards.
 
 ## The boot decision: pick your case
@@ -84,7 +85,7 @@ every case:
    furyctl create config --kind Immutable --version <vX.Y.Z> --name <cluster>
    ```
 
-2. **Fill in `furyctl.yaml`** — the boot-server URL, an SSH key, and one entry per node (its **MAC address**,
+2. **Fill in `furyctl.yaml`** — the boot-server URL, SSH key paths, and one entry per node (its **MAC address**,
    **architecture**, install disk, and network). Minimal shape:
 
    ```yaml
@@ -93,13 +94,14 @@ every case:
    metadata:
      name: <cluster>
    spec:
-     distributionVersion: <vX.Y.Z>
+     distributionVersion: <vX.Y.Z>        # selects the SD/Kubernetes versions for this cluster
      infrastructure:
        ipxeServer:
          url: "http://<furyctl-host>:8080"   # built-in boot server; bindAddress/bindPort optional
        ssh:
          username: "core"
-         keyPath: "${HOME}/.ssh/id_ed25519.pub"
+         privateKeyPath: "${HOME}/.ssh/id_ed25519"
+         publicKeyPath: "${HOME}/.ssh/id_ed25519.pub"
        nodes:
          - hostname: "ctrl01.example.local"
            macAddress: "52:54:00:10:00:01"   # keys this node's per-MAC boot + Ignition config
@@ -113,8 +115,20 @@ every case:
                  gateway: "192.168.1.1"
                  nameservers:
                    addresses: ["8.8.8.8"]
+
+         - hostname: "worker01.example.local"
+           macAddress: "52:54:00:10:00:02"
+           arch: "x86-64"
+           storage:
+             installDisk: "/dev/sda"
+           network:
+             ethernets:
+               eth0:
+                 addresses: ["192.168.1.21/24"]
+                 gateway: "192.168.1.1"
+                 nameservers:
+                   addresses: ["8.8.8.8"]
      kubernetes:
-       version: "<x.y.z>"
        networking:
          podCIDR: "10.244.0.0/16"
          serviceCIDR: "10.96.0.0/12"
@@ -138,11 +152,15 @@ every case:
    furyctl create pki
    ```
 
-4. **Apply.** The `infrastructure` phase brings up furyctl's boot server and waits for the nodes to report booted:
+4. **Apply.** Either run all phases in one command, or split the `infrastructure` phase so you can power on the
+   nodes while furyctl's boot server is running:
 
    ```sh
-   furyctl apply --phase infrastructure   # serves per-MAC configs — power on the nodes now
-   furyctl apply                          # continue: kubernetes, distribution, plugins
+   furyctl apply                          # all phases: infrastructure, kubernetes, distribution, plugins
+
+   # Or split the boot/provisioning gate from the remaining phases:
+   furyctl apply --phase infrastructure   # serves per-MAC configs; power on the nodes now
+   furyctl apply --start-from kubernetes  # continue: kubernetes, distribution, plugins
    ```
 
    **What this server is.** A **plain HTTP file server** (default bind `0.0.0.0:8080`; override with
