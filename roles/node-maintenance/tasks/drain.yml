@@ -1,0 +1,12 @@
+---
+# Open the maintenance window: cordon + drain so workloads are evicted before the disruptive layers (worker Kubernetes upgrade, OS reboot). kubectl on the controller (localhost); serial: 1 keeps one
+# node at a time so quorum is preserved.
+- name: Drain the node
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} drain {{ kubernetes_hostname }}
+      --grace-period=60 --timeout=360s --force
+      --ignore-daemonsets --delete-emptydir-data
+      --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  delegate_to: localhost
+  changed_when: true

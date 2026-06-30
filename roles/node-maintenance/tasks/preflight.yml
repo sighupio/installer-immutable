@@ -1,0 +1,41 @@
+---
+# Maintenance-envelope preflight: decide up front whether this run disrupts the node so the OS reboot and worker k8s upgrade share one cordon/drain → uncordon window. Runs in the upgrade playbook's
+# pre_tasks (before the roles), so the cordon/drain wraps every disruptive layer. The sysext layers have not aligned yet here, so the drain decision rests on the OS-reboot-pending and worker k8s-behind
+# signals (sysext_changed_components defaults to empty at this point); a node that only needs a non-disruptive sysext refresh is not drained.
+- name: Read the worker's current Kubernetes version
+  when:
+    - k8s_upgrade | bool
+    - inventory_hostname in groups['nodes']
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} get node {{ kubernetes_hostname }}
+      -o jsonpath={.status.nodeInfo.kubeletVersion}
+      --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  delegate_to: localhost
+  register: node_upgrade_worker_version
+  changed_when: false
+
+- name: Flag whether the worker is behind the target Kubernetes version
+  when:
+    - k8s_upgrade | bool
+    - inventory_hostname in groups['nodes']
+  ansible.builtin.set_fact:
+    node_upgrade_k8s_behind: >-
+      {{ (node_upgrade_worker_version.stdout | default('') | regex_replace('^v', ''))
+         != (kubernetes_version | regex_replace('^v', '')) }}
+
+# An in-band OS reboot only runs when os_update_apply + os_update_reboot are set AND the node is actually behind the target Flatcar version (os-upgrade/os_stage asserts not-newer and stages only when behind).
+- name: Decide whether an in-band OS reboot will run
+  ansible.builtin.set_fact:
+    node_upgrade_os_reboot_pending: >-
+      {{ (os_update_apply | bool) and (os_update_reboot | bool)
+         and (ansible_facts['distribution_version'] is version(os_update_target_version, '<')) }}
+
+# Drain is required only when the node is disrupted: a worker that is behind or has a swapped sysext binary (needs restart in the drained window), OR any node rebooting for the OS. A control-plane
+# k8s-only upgrade neither reboots nor needs draining.
+- name: Decide whether the maintenance window (drain) is required
+  ansible.builtin.set_fact:
+    node_upgrade_drain_required: >-
+      {{ node_upgrade_os_reboot_pending
+         or ((inventory_hostname in groups['nodes']) and (k8s_upgrade | bool)
+             and ((node_upgrade_k8s_behind | default(false)) or (sysext_changed_components | length > 0))) }}
