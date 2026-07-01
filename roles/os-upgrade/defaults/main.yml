@@ -16,6 +16,7 @@ os_update_reboot: false
 
 # --- OS layer (carried over from the os-update role) ------------------------
 # os_update_target_version is the Flatcar version — provided by group_vars/all.yml for furyctl runs, or -e.
+# os_update_server/os_update_group: the Omaha server+track update-engine queries; override per env/arch via -e or group_vars (arm64 needs an arm64-serving server).
 os_update_server: "https://public.update.sighup-prod.sighup.io/v1/update/"
 os_update_group: "stable"
 # Keep "off": reboot coordination is handled externally (e.g. KureD)

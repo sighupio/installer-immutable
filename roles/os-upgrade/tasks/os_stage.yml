@@ -80,3 +80,39 @@
         - name: Record that an async stage was launched
           ansible.builtin.set_fact:
             os_update_staging_launched: true
+
+    # Pre-drain gate: fail early if the server offered no arch-matching update (arm64 not served / unreachable) instead of failing opaquely after the drain.
+    - name: Give update-engine time to contact the update server
+      when: os_update_staging_launched | bool
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: Poll update-engine until it accepts or rejects the offer
+      when: os_update_staging_launched | bool
+      register: os_update_offer
+      changed_when: false
+      failed_when: false
+      ansible.builtin.command:
+        cmd: update_engine_client -status
+      until: >-
+        (os_update_offer.stdout is search('UPDATE_STATUS_(UPDATE_AVAILABLE|DOWNLOADING|VERIFYING|FINALIZING|UPDATED_NEED_REBOOT)'))
+        or (os_update_offer.stdout is search('UPDATE_STATUS_IDLE')
+            and os_update_offer.stdout is search('NEW_VERSION=0\.0\.0'))
+      retries: 12
+      delay: 5
+
+    - name: Fail fast when the update server offered no matching update
+      when:
+        - os_update_staging_launched | bool
+        - os_update_offer.stdout is search('UPDATE_STATUS_IDLE')
+        - os_update_offer.stdout is search('NEW_VERSION=0\.0\.0')
+      vars:
+        os_update_board: "{{ 'arm64-usr' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'amd64-usr' }}"
+      ansible.builtin.fail:
+        msg: >-
+          Pre-drain OS-update gate FAILED on {{ inventory_hostname }}: update server {{ os_update_server }}
+          (GROUP={{ os_update_group }}) offered no {{ os_update_target_version }} update for board
+          {{ os_update_board }} — update-engine settled at UPDATE_STATUS_IDLE / NEW_VERSION=0.0.0. Either the
+          server does not serve this architecture (register the {{ os_update_board }}
+          {{ os_update_target_version }} payload for this appid/group in Nebraska) or it is unreachable.
+          Nothing was drained.
