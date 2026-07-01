@@ -1,0 +1,31 @@
+---
+# Before rebooting a dedicated etcd node for the OS update: require the whole etcd cluster healthy (serial:1 keeps quorum) and snapshot the DB first.
+- name: Assert the etcd cluster is healthy before taking this member down
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      source /etc/profile.d/etcdctl.sh;
+      etcdctl endpoint health --cluster
+    executable: /bin/bash
+  register: etcd_prereboot_health
+  changed_when: false
+  failed_when: etcd_prereboot_health.rc != 0
+
+- name: Ensure the etcd snapshot directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/etcd-backup"
+    state: directory
+    mode: "0750"
+
+# Live snapshot of the local member; a failed snapshot fails the play so we never reboot without a backup.
+- name: Snapshot the etcd database before the reboot
+  vars:
+    etcd_snapshot_ts: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      source /etc/profile.d/etcdctl.sh;
+      etcdctl --endpoints=https://{{ inventory_hostname }}:2379 snapshot save {{ ansible_facts['env']['HOME'] }}/etcd-backup/etcd-{{ etcd_snapshot_ts }}.db
+    executable: /bin/bash
+  register: etcd_snapshot
+  changed_when: etcd_snapshot.rc == 0

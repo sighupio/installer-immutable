@@ -1,0 +1,14 @@
+---
+# After the dedicated etcd node reboots, wait until it rejoined and the whole cluster is healthy before moving on (serial:1 → next member won't reboot until this one is back).
+- name: Wait for etcd to report the whole cluster healthy after the reboot
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      source /etc/profile.d/etcdctl.sh;
+      etcdctl endpoint health --cluster
+    executable: /bin/bash
+  register: etcd_postreboot_health
+  changed_when: false
+  until: etcd_postreboot_health.rc == 0
+  retries: 30
+  delay: 5
