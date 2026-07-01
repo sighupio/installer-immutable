@@ -22,9 +22,11 @@
   vars:
     etcd_snapshot_ts: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
   ansible.builtin.shell:
+    # etcd 3.6 rejects --endpoints when ETCDCTL_ENDPOINTS is also set, so drop the env var and target the local member explicitly.
     cmd: >-
       set -o pipefail;
       source /etc/profile.d/etcdctl.sh;
+      unset ETCDCTL_ENDPOINTS;
       etcdctl --endpoints=https://{{ inventory_hostname }}:2379 snapshot save {{ ansible_facts['env']['HOME'] }}/etcd-backup/etcd-{{ etcd_snapshot_ts }}.db
     executable: /bin/bash
   register: etcd_snapshot
