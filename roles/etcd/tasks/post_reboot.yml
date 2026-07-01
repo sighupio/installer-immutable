@@ -12,3 +12,10 @@
   until: etcd_postreboot_health.rc == 0
   retries: 30
   delay: 5
+
+# Upgrade confirmed OK, so the pre-reboot snapshot is no longer needed; move it to tmpfs to self-clear and not pile up on the node.
+- name: Move the confirmed-safe etcd snapshot to /tmp so it does not accumulate
+  ansible.builtin.shell:
+    cmd: mv {{ ansible_facts['env']['HOME'] }}/etcd-backup/*.db /tmp/
+    executable: /bin/bash
+  changed_when: true
