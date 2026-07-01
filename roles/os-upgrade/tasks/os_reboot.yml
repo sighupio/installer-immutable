@@ -119,7 +119,7 @@
     state: stopped
     masked: true
 
-- name: Assert update-engine stays masked
+- name: Assert update-engine stays masked # noqa: command-instead-of-module
   ansible.builtin.command:
     cmd: systemctl is-enabled update-engine.service
   register: os_update_engine_state

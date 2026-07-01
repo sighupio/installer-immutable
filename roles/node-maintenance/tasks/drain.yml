@@ -8,5 +8,6 @@
       --grace-period=60 --timeout=360s --force
       --ignore-daemonsets --delete-emptydir-data
       --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  become: false
   delegate_to: localhost
   changed_when: true

@@ -9,6 +9,7 @@
       {{ kubectl_bin }} get node {{ kubernetes_hostname }}
       -o jsonpath={.status.nodeInfo.kubeletVersion}
       --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  become: false
   delegate_to: localhost
   register: kube_worker_skew_version
   changed_when: false

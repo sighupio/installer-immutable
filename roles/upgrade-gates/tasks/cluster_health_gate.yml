@@ -10,6 +10,7 @@
       {{ kubectl_bin }} get nodes
       -o jsonpath='{range .items[*]}{.metadata.name}{"="}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
       --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  become: false
   delegate_to: localhost
   register: node_upgrade_gate_nodes
   changed_when: false
@@ -30,6 +31,7 @@
       {{ kubectl_bin }} get nodes
       -o jsonpath='{range .items[*]}{.status.nodeInfo.kubeletVersion}{"\n"}{end}'
       --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  become: false
   delegate_to: localhost
   register: node_upgrade_gate_versions
   changed_when: false

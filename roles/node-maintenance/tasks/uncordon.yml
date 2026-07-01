@@ -4,6 +4,7 @@
 - name: Uncordon the node after letting it settle
   ansible.builtin.command:
     cmd: "{{ kubectl_bin }} uncordon {{ kubernetes_hostname }} --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf"
+  become: false
   delegate_to: localhost
   changed_when: true
 
@@ -21,6 +22,7 @@
       --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
       | grep -cvE 'Running|Completed'
     executable: /bin/bash
+  become: false
   delegate_to: localhost
   register: node_upgrade_pods_not_ready
   until: node_upgrade_pods_not_ready.stdout | int < 2

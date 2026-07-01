@@ -54,6 +54,7 @@
     cmd: >-
       {{ kubectl_bin }} wait --for=condition=Ready node/{{ kubernetes_hostname }}
       --timeout=120s --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+  become: false
   delegate_to: localhost
   register: node_upgrade_sanity_ready
   changed_when: false
