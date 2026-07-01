@@ -1,0 +1,31 @@
+---
+# Fetch admin.conf from a reachable control-plane (not a fixed index) so controller-side kubectl works on dedicated etcd too.
+- name: Fetch admin.conf from a reachable control-plane node
+  run_once: true
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: ./admin.conf
+    flat: true
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['control_plane'] | default([]) }}"
+  ignore_unreachable: true
+  failed_when: false
+
+- name: Check admin.conf reached the controller
+  run_once: true
+  become: false # localhost read, no root
+  delegate_to: localhost
+  ansible.builtin.stat:
+    path: ./admin.conf
+  register: node_upgrade_admin_conf
+
+- name: Assert admin.conf was obtained from a control-plane
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - (groups['control_plane'] | default([]) | length) > 0
+      - node_upgrade_admin_conf.stat.exists
+    fail_msg: >-
+      Could not obtain /etc/kubernetes/admin.conf from any control-plane host
+      ({{ groups['control_plane'] | default([]) | join(', ') }}); the upgrade's controller-side kubectl checks need it.
+    success_msg: admin.conf acquired from a control-plane for the upgrade run
