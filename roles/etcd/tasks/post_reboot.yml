@@ -14,8 +14,12 @@
   delay: 5
 
 # Upgrade confirmed OK, so the pre-reboot snapshot is no longer needed; move it to tmpfs to self-clear and not pile up on the node.
+# find (not a glob) so an already-empty backup dir (e.g. an isolated re-run) is a no-op instead of a literal-glob mv failure.
 - name: Move the confirmed-safe etcd snapshot to /tmp so it does not accumulate
   ansible.builtin.shell:
-    cmd: mv {{ ansible_facts['env']['HOME'] }}/etcd-backup/*.db /tmp/
+    cmd: >-
+      set -o pipefail;
+      find {{ ansible_facts['env']['HOME'] }}/etcd-backup -maxdepth 1 -name '*.db' -print -exec mv {} /tmp/ ';'
     executable: /bin/bash
-  changed_when: true
+  register: etcd_snapshot_move
+  changed_when: etcd_snapshot_move.stdout | length > 0
