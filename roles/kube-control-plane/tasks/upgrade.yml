@@ -44,10 +44,9 @@
     dest: "{{ kubeadm_upgrade_config_file }}"
     mode: "0600"
 
-# Additive readiness gate: the sysext swap above restarted the kubelet, after which the first kubeadm
-# upgrade apply is expected to fail preflight until the kubelet re-syncs. Poll healthz so the apply
-# proceeds the instant the API/kubelet settle (seconds) instead of eating a full retry delay; the
-# retries/delay below stay as the safety net.
+# Additive readiness gate: right after the sysext swap the API/kubelet may not have settled, so the
+# first kubeadm upgrade apply can fail preflight. Poll healthz so the apply proceeds the instant they
+# settle (seconds) instead of eating a full retry delay; the retries/delay below stay as the safety net.
 - name: Wait for the API to be serving before the upgrade
   register: cp_api_health
   until: cp_api_health.rc == 0 and cp_api_health.stdout == 'ok'
@@ -60,10 +59,10 @@
 - name: Upgrade Control Plane member with kubeadm
   register: kubeadm_upgrade
   changed_when: kubeadm_upgrade.rc == 0 and "[upgrade] SUCCESS" in kubeadm_upgrade.stdout
-  # The Kubernetes sysext swap just above restarts the kubelet; for a short window after, it has not
-  # synced the service list, so kubeadm's CreateJob preflight health-check pod cannot construct its
-  # envvars and the 15s job deadline is exceeded. Retry so the upgrade runs once the kubelet settles
-  # (the failure is at preflight, before any change, so retrying is safe).
+  # For a short window right after the Kubernetes sysext swap, kubeadm's CreateJob preflight
+  # health-check pod can fail to construct its envvars and the 15s job deadline is exceeded. Retry so
+  # the upgrade runs once things settle (the failure is at preflight, before any change, so retrying
+  # is safe).
   until: kubeadm_upgrade.rc == 0
   retries: 3
   delay: 30
@@ -79,9 +78,10 @@
     group: root
     mode: "0755"
 
-# kubeadm upgrade apply --config already applies this patch via patches.directory; re-template it but let
-# the template's own change detection drive the notify, so the kubelet only restarts when the patch content
-# actually differs (no forced restart + no changed!=0 on a clean version-only upgrade re-run).
+# The notified "Apply kubelet-config patches" handler applies this file (kubeadm upgrade node phase
+# kubelet-config --patches); re-template it but let the template's own change detection drive the notify,
+# so the kubelet only restarts when the patch content actually differs (no forced restart + no
+# changed!=0 on a clean version-only upgrade re-run).
 - name: Generate KubeletConfiguration patches file from template
   ansible.builtin.template:
     src: KubeletConfiguration-v1beta1.yml.j2
