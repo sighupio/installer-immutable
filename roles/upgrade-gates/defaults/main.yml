@@ -1,0 +1,23 @@
+---
+# upgrade-gates — the read-only validation gates for the immutable upgrade:
+#   cluster_health_gate.yml (G1) — pre-upgrade cluster-health gate, run_once in 54.upgrade-etcd pre_tasks.
+#   infra_preflight.yml     (G10) — per-node disk / artifact / A/B-rollback preflight, run in 55/56 pre_tasks.
+#   sanity.yml              (G6) — per-node post-upgrade binary/runtime/overlay/Ready check, run in 55/56 post_tasks.
+# All three are idempotent and only assert; they make no change on a clean re-run.
+
+# kubectl for the controller-side (localhost) checks; absolute when kubectl isn't on the controller's
+# non-interactive PATH (e.g. via mise). Overridden by group_vars/all.yml on furyctl runs.
+kubectl_bin: kubectl
+# Controller-side kubeconfig directory; admin.conf is fetched here at install. Inventory sets this to "./".
+kubernetes_kubeconfig_path: "./"
+# Kubernetes node name used by the delegated kubectl checks.
+kubernetes_hostname: "{{ ansible_facts['fqdn'] }}"
+# immutable sysext arch naming (x86-64 / arm64). Comes from the furyctl-rendered per-host node_arch
+# (inventory); the architecture-fact expression is only a fallback for hand-runs without the rendered var.
+sysext_arch: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
+
+# --- Infrastructure preflight (G10, tasks/infra_preflight.yml) --------------
+# Minimum free space on the root filesystem required before staging the sysext .raw + OS update. 1 GiB —
+# the largest sysext (kubernetes) is ~108 MiB and component.yml keeps current+previous (~700 MiB worst case);
+# the OS image lands on the inactive A/B partition, not /. 1 GiB leaves a ~9x margin over the actual stage.
+node_upgrade_min_free_bytes: 1073741824

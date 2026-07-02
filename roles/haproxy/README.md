@@ -12,8 +12,8 @@ This Ansible role installs and configures HAproxy on a machine running on a cont
 | --------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------- |
 | `haproxy_configuration_file_path` | Path where the configuration file will be stored in the host[1] | `/et/haproxy/haproxy.cfg`                                      |
 | `haproxy_configuration`           | Configuration that will be written to the configuration file[2] | See `defaults/main.yaml` for an example, don't use the default |
-| `haproxy_container_image`         | Container image name, including registry                        | `registry.sighup.io/fury/on-premises/haproxy`                  |
-| `haproxy_container_tag`           | Container image tag                                             | `3.2.9`                                                        |
+| `haproxy_container_image`         | Container image name, including registry (rendered by furyctl from `immutable.yaml`) | Rendered into `group_vars/all.yml` — no in-role default |
+| `haproxy_container_tag`           | Container image tag (rendered by furyctl from `immutable.yaml`)  | Rendered into `group_vars/all.yml` — no in-role default        |
 | `kubernetes_local_pki_dir`        | Path to the local Kubernetes PKI directory (optional)[3]        | Unset                                                          |
 
 [1] The **whole folder** that contains the configuration file in the host will be mounted on the container on the `/usr/local/` path.

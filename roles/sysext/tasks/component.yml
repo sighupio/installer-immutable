@@ -1,0 +1,117 @@
+---
+- name: Set component facts
+  ansible.builtin.set_fact:
+    sysext_comp_name: "{{ sysext_component.key }}"
+    sysext_comp_version: "{{ sysext_component.value.version }}"
+    sysext_comp_url: "{{ sysext_component.value.arch[sysext_arch].url }}"
+    sysext_comp_link: "{{ sysext_active_dir }}/{{ sysext_component.key }}.raw"
+
+- name: Check the active symlink for {{ sysext_comp_name }}
+  ansible.builtin.stat:
+    path: "{{ sysext_comp_link }}"
+  register: sysext_comp_stat
+
+# A component without an active symlink is not installed on this node (e.g. etcd on a worker) → leave it untouched.
+- name: Align {{ sysext_comp_name }}
+  when:
+    - sysext_comp_stat.stat.exists
+    - sysext_comp_stat.stat.islnk
+  block:
+    - name: Resolve active vs target file for {{ sysext_comp_name }}
+      ansible.builtin.set_fact:
+        sysext_comp_active_file: "{{ sysext_comp_stat.stat.lnk_target | basename }}"
+        sysext_comp_target_file: "{{ sysext_comp_name }}-{{ sysext_comp_version }}-{{ sysext_arch }}.raw"
+
+    - name: Stage and activate {{ sysext_comp_name }} {{ sysext_comp_version }}
+      when: sysext_comp_active_file != sysext_comp_target_file
+      block:
+        - name: Ensure the {{ sysext_comp_name }} store directory exists
+          ansible.builtin.file:
+            path: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        # Fetch the .raw straight from the upstream release. get_url downloads to a temp file and renames on success, so a failed/partial download never lands in place and the symlink switch is
+        # skipped (previous stays in use). checksum: verifies the .raw against the release SHA256SUMS (matched by dest basename) before the rename, so a tampered/corrupt .raw fails the task.
+        - name: Download the target .raw from the upstream release
+          ansible.builtin.get_url:
+            url: "{{ sysext_comp_url }}"
+            dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/{{ sysext_comp_target_file }}"
+            checksum: "sha256:{{ sysext_comp_url | dirname }}/SHA256SUMS"
+            owner: root
+            group: root
+            mode: "0644"
+
+        # G11 (add-immutable-upgrade-gates): verify a cryptographic signature of SHA256SUMS (one signature
+        # covers every artifact) IN ADDITION to the checksum above, before repointing the symlink — so a
+        # release host that tampers with both the .raw and SHA256SUMS is caught. DISABLED BY DEFAULT:
+        # release.sh publishes only SHA256SUMS today (no cosign/GPG signature). Once a signed release exists,
+        # set sysext_verify_signature: true and supply sysext_signature_tool / _key / _ext. Until then this
+        # whole block is skipped and the checksum-only path is unchanged.
+        - name: Verify the {{ sysext_comp_name }} signature
+          when: sysext_verify_signature | bool
+          block:
+            - name: Fetch SHA256SUMS for {{ sysext_comp_name }}
+              ansible.builtin.get_url:
+                url: "{{ sysext_comp_url | dirname }}/SHA256SUMS"
+                dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS"
+                owner: root
+                group: root
+                mode: "0644"
+
+            - name: Fetch the SHA256SUMS signature for {{ sysext_comp_name }}
+              ansible.builtin.get_url:
+                url: "{{ sysext_comp_url | dirname }}/SHA256SUMS.{{ sysext_signature_ext }}"
+                dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS.{{ sysext_signature_ext }}"
+                owner: root
+                group: root
+                mode: "0644"
+
+            # cosign verify-blob / gpg --verify return non-zero on a bad signature, which fails the task and
+            # leaves the symlink below untouched (the previous .raw stays active).
+            - name: Verify SHA256SUMS with cosign for {{ sysext_comp_name }}
+              when: sysext_signature_tool == 'cosign'
+              ansible.builtin.command:
+                cmd: >-
+                  cosign verify-blob
+                  --key {{ sysext_signature_key }}
+                  --signature {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS.{{ sysext_signature_ext }}
+                  {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS
+              changed_when: false
+
+            - name: Verify SHA256SUMS with gpg for {{ sysext_comp_name }}
+              when: sysext_signature_tool == 'gpg'
+              ansible.builtin.command:
+                cmd: >-
+                  gpg --no-default-keyring --keyring {{ sysext_signature_key }}
+                  --verify {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS.{{ sysext_signature_ext }}
+                  {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS
+              changed_when: false
+
+        - name: Switch the active symlink for {{ sysext_comp_name }}
+          ansible.builtin.file:
+            src: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/{{ sysext_comp_target_file }}"
+            dest: "{{ sysext_comp_link }}"
+            state: link
+            force: true
+
+        - name: Record {{ sysext_comp_name }} as changed
+          ansible.builtin.set_fact:
+            sysext_changed_components: "{{ sysext_changed_components + [sysext_comp_name] }}"
+
+        # Keep current + previous only; rollback = repoint the symlink to the previous .raw. Never prune the active file: protect the symlink target explicitly rather than relying on mtime order (a
+        # re-pin to an older .raw would otherwise risk it).
+        - name: Prune old {{ sysext_comp_name }} .raw files, keeping current + previous
+          ansible.builtin.shell:
+            cmd: |
+              set -euo pipefail
+              cd "{{ sysext_extensions_store }}/{{ sysext_comp_name }}"
+              active="$(basename "$(readlink -f "{{ sysext_comp_link }}")")"
+              ls -1t {{ sysext_comp_name }}-*-{{ sysext_arch }}.raw \
+                | { grep -vxF "${active}" || true; } \
+                | tail -n +2 \
+                | xargs -r rm -f
+            executable: /bin/bash
+          changed_when: true

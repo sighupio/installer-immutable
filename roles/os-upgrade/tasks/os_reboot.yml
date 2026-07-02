@@ -1,0 +1,140 @@
+---
+# OS layer — WAIT + REBOOT half: waits on the async stage from os_stage.yml so the download has finished, verifies the staged version, re-masks update-engine, then (when os_update_reboot) reboots and
+# marks the partition good.
+- name: Finalize the OS stage
+  when: os_update_behind
+  block:
+    - name: Wait for the async OS stage to finish
+      when: os_update_staging_launched | bool
+      ansible.builtin.async_status:
+        jid: "{{ node_upgrade_os_job.ansible_job_id }}"
+      register: os_update_async
+      until: os_update_async.finished
+      retries: "{{ os_update_stage_async_retries }}"
+      delay: 5
+      changed_when: false
+
+    # The Omaha protocol does not let the client pick a version: the update server decides. Fail if what it staged does not match the validated target version.
+    - name: Read update-engine status after the stage
+      register: os_update_status
+      changed_when: false
+      failed_when: false
+      ansible.builtin.command:
+        cmd: update_engine_client -status
+
+    - name: Verify the staged version matches the target
+      vars:
+        os_update_board: "{{ 'arm64-usr' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'amd64-usr' }}"
+      ansible.builtin.assert:
+        that:
+          - "'UPDATE_STATUS_UPDATED_NEED_REBOOT' in os_update_status.stdout"
+          - os_update_already_staged | bool or (('NEW_VERSION=' ~ os_update_target_version) in os_update_status.stdout)
+        fail_msg: >-
+          OS stage verification FAILED on {{ inventory_hostname }}: expected UPDATE_STATUS_UPDATED_NEED_REBOOT
+          with NEW_VERSION={{ os_update_target_version }} for board {{ os_update_board }}, but update-engine
+          reports '{{ os_update_status.stdout | regex_replace('\n', ' ') }}'. A NEW_VERSION=0.0.0 / IDLE
+          result means the update server {{ os_update_server }} (GROUP={{ os_update_group }}) served no update
+          for this architecture — register the {{ os_update_board }} {{ os_update_target_version }} payload in
+          Nebraska.
+        success_msg: "OS stage verified on {{ inventory_hostname }}: {{ os_update_target_version }} staged, pending reboot"
+
+    - name: Record the staged version marker
+      when: not (os_update_already_staged | bool)
+      ansible.builtin.copy:
+        content: "{{ os_update_target_version }}\n"
+        dest: "{{ os_update_marker_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+  always:
+    # Restore the default posture even if staging failed: OS updates stay disabled
+    - name: Mask and stop update-engine
+      ansible.builtin.systemd:
+        name: update-engine.service
+        state: stopped
+        masked: true
+
+# Reboot to activate a staged OS update or a staged daemon extension; the OS-specific verify/mark steps run only on an OS bump.
+- name: Reboot to activate the staged OS or extensions
+  when:
+    - os_update_reboot
+    - os_update_behind or (node_daemon_sysext_changed | default(false))
+  block:
+    - name: Reboot into the new OS version
+      ansible.builtin.reboot:
+        reboot_timeout: "{{ os_update_reboot_timeout }}"
+
+    - name: Gather facts again after the reboot
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "!min"
+          - distribution
+        filter: "ansible_distribution*"
+
+    # GRUB falls back to the old partition if the new version fails to boot; revert the staged extensions so the rolled-back OS stays consistent.
+    - name: Verify the boot or roll back the staged extensions
+      when: os_update_behind
+      block:
+        - name: Verify the node booted the target version
+          ansible.builtin.assert:
+            that:
+              - ansible_facts['distribution_version'] == os_update_target_version
+            fail_msg: >-
+              Node booted Flatcar {{ ansible_facts['distribution_version'] }} instead of
+              {{ os_update_target_version }}: the new version failed to boot and was rolled back
+      rescue:
+        - name: Revert the extension symlinks to the previous version
+          ansible.builtin.shell:
+            cmd: |
+              set -euo pipefail
+              for link in /etc/extensions/*.raw; do
+                [ -L "$link" ] || continue
+                comp="$(basename "$link" .raw)"
+                prev="$(ls -1t /opt/extensions/"$comp"/"$comp"-*.raw 2>/dev/null | sed -n 2p || true)"
+                [ -n "${prev:-}" ] && ln -sf "$prev" "$link"
+              done
+              systemd-sysext refresh
+            executable: /bin/bash
+          changed_when: true
+
+        - name: Fail after reverting the staged extensions
+          ansible.builtin.fail:
+            msg: >-
+              Node booted Flatcar {{ ansible_facts['distribution_version'] }} instead of
+              {{ os_update_target_version }}; reverted the extensions to the previous version
+
+    # update-engine normally marks the boot successful ~2 minutes after boot, but it is masked: set the GPT flags ourselves or GRUB rolls back on the next reboot
+    - name: Mark the current usr partition as successful
+      when: os_update_behind
+      register: os_update_mark_good
+      changed_when: os_update_mark_good.rc == 0
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          part="$(rootdev -s /usr)"
+          idx="$(cat /sys/class/block/"$(basename "${part}")"/partition)"
+          disk="/dev/$(lsblk -ndo pkname "${part}")"
+          cgpt add -i "${idx}" -S1 -T0 "${disk}"
+          [ "$(cgpt show -i "${idx}" -S "${disk}")" = "1" ]
+        executable: /bin/bash
+
+    - name: Remove the staged version marker
+      when: os_update_behind
+      ansible.builtin.file:
+        path: "{{ os_update_marker_path }}"
+        state: absent
+
+# Keep OS auto-updates off regardless of path, then confirm update-engine is masked.
+- name: Mask and stop update-engine
+  ansible.builtin.systemd:
+    name: update-engine.service
+    state: stopped
+    masked: true
+
+- name: Assert update-engine stays masked # noqa: command-instead-of-module
+  ansible.builtin.command:
+    cmd: systemctl is-enabled update-engine.service
+  register: os_update_engine_state
+  changed_when: false
+  failed_when: "'masked' not in os_update_engine_state.stdout"

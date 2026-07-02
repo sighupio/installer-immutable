@@ -1,0 +1,33 @@
+---
+# os-upgrade — the Flatcar A/B OS layer for the immutable upgrade. tasks/os_stage.yml stages
+# the update on the inactive partition (async, so the download overlaps the sysext + Kubernetes layers) and
+# tasks/os_reboot.yml waits on it, reboots and marks the partition good. The OS + sysext targets come from
+# the furyctl-rendered group_vars/all.yml; a hand-run without furyctl passes them via -e.
+
+# --- Layer toggles (false by default → the role makes no change) -----------
+# The upgrade playbooks (55/56) set both true at play level; os_stage only acts when the node is behind the
+# target and os_reboot only reboots when os_update_reboot is set.
+os_update_apply: false
+os_update_reboot: false
+
+# --- Version targets (provided externally, never read from immutable.yaml here) --------------------------
+# sysext_targets, os_update_target_version and kubernetes_version come from the furyctl-rendered
+# group_vars/all.yml (furyctl reads immutable.yaml in Go), or are passed with -e on a hand-run.
+
+# --- OS layer (carried over from the os-update role) ------------------------
+# os_update_target_version is the Flatcar version — provided by group_vars/all.yml for furyctl runs, or -e.
+# os_update_server/os_update_group: the Omaha server+track update-engine queries; override per env/arch via -e or group_vars (arm64 needs an arm64-serving server).
+os_update_server: "https://public.update.sighup-prod.sighup.io/v1/update/"
+os_update_group: "stable"
+# Keep "off": reboot coordination is handled externally (e.g. KureD)
+os_update_reboot_strategy: "off"
+os_update_conf_path: "/etc/flatcar/update.conf"
+# Records the staged version on the node: update-engine forgets NEW_VERSION when restarted
+os_update_marker_path: "/var/lib/flatcar-os-update.staged"
+os_update_reboot_timeout: 600
+# Async OS stage: the slow Flatcar download runs in parallel with the sysext/k8s layers instead of blocking
+# them; os_reboot.yml waits on it via async_status (retries × 15s delay) before rebooting.
+os_update_stage_async_timeout: 2400
+# retries x delay (5s) must stay >= os_update_stage_async_timeout so the full download budget is preserved
+# while polling more often (tighter tail latency when the stage finishes mid-wait).
+os_update_stage_async_retries: 480

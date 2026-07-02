@@ -1,0 +1,43 @@
+---
+# Align the system extensions this role owns to the target versions in the furyctl-rendered version vars file
+# (group_vars/all.yml provides sysext_targets). The caller passes sysext_components (the component names it owns) and
+# reads sysext_changed_components afterwards to decide daemon restarts. Per-component logic lives in component.yml.
+
+# sysext_arch needs the architecture fact; a play that skips fact gathering (or runs via --tags) won't have it.
+- name: Ensure the architecture fact is available
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!min"
+      - hardware
+  when: ansible_facts['architecture'] is not defined
+
+# Reset the per-run changed list so the caller sees only what THIS alignment changed.
+- name: Reset the changed-components fact for this run
+  ansible.builtin.set_fact:
+    sysext_changed_components: []
+
+# Align only the components this role owns; component.yml skips ones absent on the node or already on target.
+- name: Align the selected system extensions
+  ansible.builtin.include_tasks: component.yml
+  loop: "{{ sysext_targets | dict2items | selectattr('key', 'in', sysext_components) | list }}"
+  loop_control:
+    loop_var: sysext_component
+    label: "{{ sysext_component.key }}"
+
+# Activate in-band when the caller opts in; idempotent, so it runs even if a prior interrupted run already switched the symlink but never merged it.
+- name: Refresh the system-extension overlay
+  when: sysext_refresh_after | default(false) | bool
+  # Keep the refresh unconditional (recovers an interrupted run that switched the symlink but never merged),
+  # but only report changed when this run actually staged something, so a clean re-run stays changed=0.
+  changed_when: sysext_changed_components | length > 0
+  ansible.builtin.command:
+    cmd: systemd-sysext refresh
+
+# Accumulate across align calls so the reboot step knows a staged daemon extension is waiting for boot activation.
+- name: Record that a daemon extension was staged
+  when:
+    - sysext_changed_components | length > 0
+    - not (sysext_refresh_after | default(false) | bool)
+  ansible.builtin.set_fact:
+    node_daemon_sysext_changed: true

@@ -1,4 +1,14 @@
 ---
+# Stage the containerd extension during an upgrade; the new binary activates at the reboot, not by an in-band restart.
+- name: Align the containerd system extension during upgrade
+  ansible.builtin.include_role:
+    name: sysext
+    tasks_from: align.yml
+  vars:
+    sysext_components:
+      - containerd
+  when: upgrade | default(false) | bool
+
 - name: Write containerd HTTP proxy configuration drop-in
   ansible.builtin.template:
     src: http-proxy.conf.j2
@@ -59,6 +69,7 @@
   loop: "{{ existing_dirs | difference(keep_dirs) }}"
   register: containerd_old_registry_config_dirs
 
+# A swapped containerd binary activates at the reboot, so only a config change restarts the daemon in-band.
 - name: Set containerd restart flag
   ansible.builtin.set_fact:
     containerd_needs_restart: >-

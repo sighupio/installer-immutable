@@ -1,0 +1,61 @@
+---
+# G10 (add-immutable-upgrade-gates) — Infrastructure preflight, run before the disruptive work so a full
+# disk, an unreachable sysext artifact, or a missing rollback target fails fast instead of stranding the
+# node mid-window. Read-only/idempotent.
+# Both the control-plane (55) and worker (56) upgrade playbooks run this in pre_tasks BEFORE the
+# maintenance-window drain and before the OS stage, so a full disk, an unreachable artifact, or a missing
+# rollback target fails fast on a still-in-service node.
+- name: Read available space on the root filesystem
+  ansible.builtin.shell:
+    cmd: set -o pipefail; df -Pk / | awk 'NR==2 {print $4 * 1024}'
+    executable: /bin/bash
+  register: node_upgrade_pf_avail
+  changed_when: false
+
+# The sysext store (/opt/extensions) and update-engine staging live on the writable root filesystem; the OS
+# image itself goes to the fixed inactive A/B partition, so the root free space is the meaningful check.
+- name: Assert there is enough free disk to stage the upgrade
+  ansible.builtin.assert:
+    that:
+      - node_upgrade_pf_avail.stdout | int >= node_upgrade_min_free_bytes | int
+    fail_msg: >-
+      Infra preflight FAILED (disk): {{ (node_upgrade_pf_avail.stdout | int / 1073741824) | round(2) }} GiB
+      free on / is below the required {{ (node_upgrade_min_free_bytes | int / 1073741824) | round(2) }} GiB
+    success_msg: "Free disk OK: {{ (node_upgrade_pf_avail.stdout | int / 1073741824) | round(2) }} GiB on /"
+
+# HEAD each target .raw (sysext_targets comes from the furyctl-rendered vars) so an unreachable release host
+# fails here, not later inside the drained window. The task fails the run if any URL is not reachable.
+- name: Check each target sysext artifact is reachable
+  when: sysext_targets is defined
+  ansible.builtin.uri:
+    url: "{{ item.value.arch[sysext_arch].url }}"
+    method: HEAD
+    follow_redirects: all
+    status_code:
+      - 200
+      - 302
+  register: node_upgrade_pf_raw
+  changed_when: false
+  loop: "{{ sysext_targets | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+# Flatcar keeps two /usr partitions (USR-A / USR-B) for atomic A/B OS rollback; confirm both are present so
+# a failed boot can fall back. The previous sysext .raw (the other rollback leg) is retained by
+# component.yml's prune-keep-2 and only exists after the first upgrade, so it is not pre-checkable here.
+- name: Stat the A/B OS partitions (rollback target)
+  ansible.builtin.stat:
+    path: "/dev/disk/by-partlabel/{{ item }}"
+  register: node_upgrade_pf_usr
+  loop:
+    - USR-A
+    - USR-B
+
+- name: Assert both A/B OS partitions exist for rollback
+  ansible.builtin.assert:
+    that:
+      - node_upgrade_pf_usr.results | selectattr('stat.exists', 'equalto', true) | list | length == 2
+    fail_msg: >-
+      Infra preflight FAILED (rollback): expected both USR-A and USR-B partitions for A/B OS rollback but
+      did not find them — {{ node_upgrade_pf_usr.results | map(attribute='item') | list }}
+    success_msg: A/B OS partitions present (rollback available)

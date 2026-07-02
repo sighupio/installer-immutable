@@ -1,4 +1,30 @@
 ---
+# G5 (add-immutable-upgrade-gates): assert the Kubernetes version skew before invoking kubeadm. Reading the
+# node's live version and refusing a jump greater than one minor catches a manifest bumped two minors in one
+# step before kubeadm fails mid-flight, rather than trusting the immutable.yaml coupling alone. Skew 0 on an
+# already-upgraded node, so a re-run passes.
+- name: Read the control-plane node's current Kubernetes version for the skew check
+  ansible.builtin.command:
+    cmd: >-
+      kubectl get node {{ kubernetes_hostname }}
+      -o jsonpath={.status.nodeInfo.kubeletVersion}
+      --kubeconfig /etc/kubernetes/admin.conf
+  register: kube_cp_skew_version
+  changed_when: false
+
+- name: Assert the Kubernetes version skew is within one minor
+  vars:
+    skew_current: "{{ kube_cp_skew_version.stdout | regex_replace('^v', '') }}"
+    skew_target: "{{ kubernetes_version | regex_replace('^v', '') }}"
+  ansible.builtin.assert:
+    that:
+      - skew_target.split('.')[0] | int == skew_current.split('.')[0] | int
+      - (skew_target.split('.')[1] | int - skew_current.split('.')[1] | int) | abs <= 1
+    fail_msg: >-
+      Kubernetes version-skew violation: target {{ skew_target }} is more than one minor from the
+      control-plane's current {{ skew_current }} — kubeadm upgrade refused
+    success_msg: "Version skew OK: {{ skew_current }} -> {{ skew_target }} (<= 1 minor)"
+
 - name: Renew certificates
   register: renew_certs
   changed_when: renew_certs.rc == 0
@@ -18,18 +44,49 @@
     dest: "{{ kubeadm_upgrade_config_file }}"
     mode: "0600"
 
+# Additive readiness gate: right after the sysext swap the API/kubelet may not have settled, so the
+# first kubeadm upgrade apply can fail preflight. Poll healthz so the apply proceeds the instant they
+# settle (seconds) instead of eating a full retry delay; the retries/delay below stay as the safety net.
+- name: Wait for the API to be serving before the upgrade
+  register: cp_api_health
+  until: cp_api_health.rc == 0 and cp_api_health.stdout == 'ok'
+  retries: 18
+  delay: 5
+  changed_when: false
+  failed_when: false
+  ansible.builtin.command: "kubectl get --raw=/healthz --kubeconfig /etc/kubernetes/admin.conf"
+
 - name: Upgrade Control Plane member with kubeadm
   register: kubeadm_upgrade
   changed_when: kubeadm_upgrade.rc == 0 and "[upgrade] SUCCESS" in kubeadm_upgrade.stdout
+  # For a short window right after the Kubernetes sysext swap, kubeadm's CreateJob preflight
+  # health-check pod can fail to construct its envvars and the 15s job deadline is exceeded. Retry so
+  # the upgrade runs once things settle (the failure is at preflight, before any change, so retrying
+  # is safe).
+  until: kubeadm_upgrade.rc == 0
+  retries: 3
+  delay: 30
   ansible.builtin.command: "kubeadm upgrade apply --config {{ kubeadm_upgrade_config_file }}"
 
-# TODO: why are we doing this after the upgrade? Why does it need to be re-generated?
+# The kubelet patches dir is created by the worker role on join, but not on control-plane nodes, so
+# create it here before templating the patch (the control-plane upgrade runs this on the CP itself).
+- name: Ensure the kubelet patches directory exists
+  ansible.builtin.file:
+    path: "{{ kubelet_config_path }}/patches"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# The notified "Apply kubelet-config patches" handler applies this file (kubeadm upgrade node phase
+# kubelet-config --patches); re-template it but let the template's own change detection drive the notify,
+# so the kubelet only restarts when the patch content actually differs (no forced restart + no
+# changed!=0 on a clean version-only upgrade re-run).
 - name: Generate KubeletConfiguration patches file from template
   ansible.builtin.template:
     src: KubeletConfiguration-v1beta1.yml.j2
     dest: "{{ kubelet_config_path }}/patches/kubeletconfiguration.yaml"
     mode: "0644"
-  changed_when: true
   notify:
     - Apply kubelet-config patches
     - Restart kubelet

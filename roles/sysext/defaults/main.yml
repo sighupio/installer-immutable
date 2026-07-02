@@ -1,0 +1,23 @@
+---
+# Helper role: align a subset of system extensions to the target versions resolved by the furyctl-rendered version
+# vars file (group_vars/all.yml provides sysext_targets). The per-component logic (tasks/component.yml) resolves
+# the store, symlink dir and release host from these defaults; callers pass the component subset they own.
+
+# The .raw download URL comes straight from sysext_targets[<name>].arch[<arch>].url in the version vars file
+# (sourced from immutable.yaml), so no release-base convention is reconstructed here.
+sysext_extensions_store: /opt/extensions
+sysext_active_dir: /etc/extensions
+# immutable sysext arch naming (x86-64 / arm64). Comes from the furyctl-rendered per-host node_arch
+# (inventory); the architecture-fact expression is only a fallback for hand-runs without the rendered var.
+sysext_arch: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
+# Components whose .raw changed in this alignment; read by the calling role to decide daemon restarts.
+sysext_changed_components: []
+
+# G11 (add-immutable-upgrade-gates): cryptographic signature verification of the sysext artifact, in addition
+# to the SHA256 checksum. DISABLED BY DEFAULT — the upstream release publishes only SHA256SUMS today (no
+# cosign/GPG signature). Enable once a signed release exists: set sysext_verify_signature: true and provide
+# the tool (cosign|gpg), the public key / keyring path, and the detached-signature file extension.
+sysext_verify_signature: false
+sysext_signature_tool: cosign
+sysext_signature_key: ""
+sysext_signature_ext: sig

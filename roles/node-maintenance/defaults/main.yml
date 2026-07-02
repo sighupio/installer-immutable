@@ -1,0 +1,32 @@
+---
+# node-maintenance — the single cordon/drain → uncordon maintenance envelope for the immutable upgrade. The
+# upgrade playbooks (55/56) call:
+#   preflight.yml — decide node_upgrade_drain_required from one disruptive-node rule (pre_tasks)
+#   drain.yml     — cordon + drain, only when node_upgrade_drain_required (pre_tasks)
+#   uncordon.yml  — uncordon + baseline-relative pod-settle wait, only when drained (post_tasks)
+# This is the one place that decides and opens/closes the window, applied symmetrically to CP and workers.
+
+# --- Layer signals the preflight decision reads (set true at play level by 55/56) ---
+k8s_upgrade: false
+os_update_apply: false
+os_update_reboot: false
+# Components whose .raw changed in the sysext layer. Empty here: the sysext layers align inside the roles,
+# after preflight runs in pre_tasks, so the drain decision rests on OS-reboot-pending + worker k8s-behind.
+sysext_changed_components: []
+
+# --- Drain decision + window ------------------------------------------------
+# Computed in tasks/preflight.yml: whether this run disrupts the node and so must run inside a cordon/drain →
+# uncordon window; default false → no drain.
+node_upgrade_drain_required: false
+# Post-uncordon pod-settle wait (kubectl on the controller).
+skip_pods_running_check: false
+pods_running_retries: 20
+
+# --- Controller-side kubectl access -----------------------------------------
+# kubectl for the controller-side (localhost) drain/uncordon/baseline calls; absolute when kubectl isn't on
+# the controller's non-interactive PATH (e.g. via mise). Overridden by group_vars/all.yml on furyctl runs.
+kubectl_bin: kubectl
+# Controller-side kubeconfig directory; admin.conf is fetched here at install. Inventory sets this to "./".
+kubernetes_kubeconfig_path: "./"
+# Kubernetes node name used by the delegated kubectl drain/uncordon.
+kubernetes_hostname: "{{ ansible_facts['fqdn'] }}"
