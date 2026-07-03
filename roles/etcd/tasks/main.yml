@@ -24,7 +24,7 @@
     name: etcd
     daemon_reload: true
     state: restarted
-  # Skip on upgrade: certs_renewal.yaml already restarts etcd with the new env, so this restart is a redundant outage.
+  # Skip on upgrade: the reboot (or the gated certs_renewal restart) restarts etcd with the new env, so this restart is a redundant outage.
   when: etcd_config.changed and not (etcd_upgrade | default(false) | bool)
 
 - name: Enable and start etcd
