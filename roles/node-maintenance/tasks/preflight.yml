@@ -2,7 +2,7 @@
 # Decide up front whether this run disrupts the node so every disruptive layer shares one drain window.
 - name: Read the worker's current Kubernetes version
   when:
-    - k8s_upgrade | bool
+    - upgrade | bool
     - inventory_hostname in groups['nodes']
   ansible.builtin.command:
     cmd: >-
@@ -16,7 +16,7 @@
 
 - name: Flag whether the worker is behind the target Kubernetes version
   when:
-    - k8s_upgrade | bool
+    - upgrade | bool
     - inventory_hostname in groups['nodes']
   ansible.builtin.set_fact:
     node_upgrade_k8s_behind: >-
@@ -35,5 +35,5 @@
   ansible.builtin.set_fact:
     node_upgrade_drain_required: >-
       {{ node_upgrade_os_reboot_pending
-         or ((inventory_hostname in groups['nodes']) and (k8s_upgrade | bool)
+         or ((inventory_hostname in groups['nodes']) and (upgrade | bool)
              and ((node_upgrade_k8s_behind | default(false)) or (sysext_changed_components | length > 0))) }}

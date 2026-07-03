@@ -2,7 +2,7 @@
 # node-maintenance: the single cordon/drain → uncordon window (preflight decides, drain opens, uncordon closes).
 
 # --- Layer signals the preflight decision reads (set true at play level by 55/56) ---
-k8s_upgrade: false
+upgrade: false
 os_update_apply: false
 os_update_reboot: false
 # Empty at preflight time: sysext aligns later, so the drain decision uses OS-reboot-pending + worker k8s-behind.
