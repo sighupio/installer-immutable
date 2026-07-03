@@ -1,6 +1,5 @@
 ---
 haproxy_configuration_file_path: "/etc/haproxy/haproxy.cfg"
-# haproxy_container_image/tag are rendered into group_vars/all.yml — no in-role default (single source).
 haproxy_configuration: |
   # example haproxy.cfg
   global

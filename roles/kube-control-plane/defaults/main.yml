@@ -28,7 +28,6 @@ kubernetes_cloud_config: ""
 # Accepts a list of strings, in which each string can be either an IP Address or a domain
 kubernetes_apiserver_certSANs: []
 kubernetes_control_plane_address: "{{ ansible_facts['fqdn'] }}"
-# kubernetes_version/coredns_image_prefix come from the rendered version vars; the flat value is a hand-run fallback.
 kubernetes_image_registry: "registry.sighup.io/fury/on-premises"
 coredns_image_prefix: "/coredns"
 # This will be used as the Kubernetes node name
