@@ -18,9 +18,7 @@
   register: node_kubelet_conf
 
 - name: Writing kubeadm.yaml configuration file
-  # The kubeadm.yml join config carries the bootstrap token, only minted on install. On an already-joined
-  # node (upgrade), re-rendering it leaves the token empty and `kubeadm config validate` below fails. The
-  # join config is only needed to join, so skip writing/validating it when the node is already joined.
+  # Skip the join config on already-joined nodes: re-rendering empties the bootstrap token and fails validation.
   when: not node_kubelet_conf.stat.exists
   register: kubeadm_config
   ansible.builtin.template:
@@ -55,8 +53,7 @@
 
 - name: Reconfigure Kubelet
   # If kubelet.conf doesn't exist, kubeadm join will configure kubelet using the patches.
-  # Skip on the upgrade path: the post-reboot `kubeadm upgrade node --patches` (upgrade.yml) reapplies the
-  # same kubelet patches with the new binary, so this pre-reboot reconfigure+restart is pure redundancy.
+  # Skip on upgrade: the post-reboot `kubeadm upgrade node --patches` reapplies these patches, so this is redundant.
   when: kubelet_patches.changed and node_kubelet_conf.stat.exists and not (upgrade | default(false) | bool)
   register: kubelet_reapply_config
   # Note: this command does not show in its output if no changes were applied, even when nothing changes

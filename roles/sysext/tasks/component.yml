@@ -33,8 +33,7 @@
             group: root
             mode: "0755"
 
-        # Fetch the .raw straight from the upstream release. get_url downloads to a temp file and renames on success, so a failed/partial download never lands in place and the symlink switch is
-        # skipped (previous stays in use). checksum: verifies the .raw against the release SHA256SUMS (matched by dest basename) before the rename, so a tampered/corrupt .raw fails the task.
+        # get_url renames only on success and verifies the .raw against SHA256SUMS, so a bad/partial download never activates.
         - name: Download the target .raw from the upstream release
           ansible.builtin.get_url:
             url: "{{ sysext_comp_url }}"
@@ -44,12 +43,7 @@
             group: root
             mode: "0644"
 
-        # G11 (add-immutable-upgrade-gates): verify a cryptographic signature of SHA256SUMS (one signature
-        # covers every artifact) IN ADDITION to the checksum above, before repointing the symlink — so a
-        # release host that tampers with both the .raw and SHA256SUMS is caught. DISABLED BY DEFAULT:
-        # release.sh publishes only SHA256SUMS today (no cosign/GPG signature). Once a signed release exists,
-        # set sysext_verify_signature: true and supply sysext_signature_tool / _key / _ext. Until then this
-        # whole block is skipped and the checksum-only path is unchanged.
+        # Signature check on SHA256SUMS catches a host tampering with both .raw and sums; off by default (no signed release yet).
         - name: Verify the {{ sysext_comp_name }} signature
           when: sysext_verify_signature | bool
           block:
@@ -69,8 +63,7 @@
                 group: root
                 mode: "0644"
 
-            # cosign verify-blob / gpg --verify return non-zero on a bad signature, which fails the task and
-            # leaves the symlink below untouched (the previous .raw stays active).
+            # A bad signature fails the task and leaves the symlink untouched, so the previous .raw stays active.
             - name: Verify SHA256SUMS with cosign for {{ sysext_comp_name }}
               when: sysext_signature_tool == 'cosign'
               ansible.builtin.command:
@@ -101,8 +94,7 @@
           ansible.builtin.set_fact:
             sysext_changed_components: "{{ sysext_changed_components + [sysext_comp_name] }}"
 
-        # Keep current + previous only; rollback = repoint the symlink to the previous .raw. Never prune the active file: protect the symlink target explicitly rather than relying on mtime order (a
-        # re-pin to an older .raw would otherwise risk it).
+        # Keep current + previous only (previous = rollback target); never prune the active symlink's file.
         - name: Prune old {{ sysext_comp_name }} .raw files, keeping current + previous
           ansible.builtin.shell:
             cmd: |

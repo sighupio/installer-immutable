@@ -1,6 +1,5 @@
 ---
-# OS layer — WAIT + REBOOT half: waits on the async stage from os_stage.yml so the download has finished, verifies the staged version, re-masks update-engine, then (when os_update_reboot) reboots and
-# marks the partition good.
+# WAIT+REBOOT half: wait on the async stage, verify the staged version, then reboot and mark the partition good.
 - name: Finalize the OS stage
   when: os_update_behind
   block:

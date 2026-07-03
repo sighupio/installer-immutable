@@ -24,8 +24,7 @@
     name: etcd
     daemon_reload: true
     state: restarted
-  # On an upgrade run the unconditional restart in certs_renewal.yaml already picks up the new etcd.env
-  # (templated above before that restart), so this earlier restart is a redundant quorum-affecting outage.
+  # Skip on upgrade: certs_renewal.yaml already restarts etcd with the new env, so this restart is a redundant outage.
   when: etcd_config.changed and not (etcd_upgrade | default(false) | bool)
 
 - name: Enable and start etcd

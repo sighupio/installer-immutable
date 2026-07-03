@@ -1,6 +1,5 @@
 ---
-# Close the maintenance window: uncordon only after the disruptive layers (incl. the OS reboot + boot-verify) have completed so the node rejoins scheduling only once healthy, then wait for pods to
-# settle. kubectl on the controller (delegate localhost).
+# Close the window: uncordon only after the disruptive layers finish (node healthy), then wait for pods to settle.
 - name: Uncordon the node after letting it settle
   ansible.builtin.command:
     cmd: "{{ kubectl_bin }} uncordon {{ kubernetes_hostname }} --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf"
@@ -9,10 +8,7 @@
   changed_when: true
 
 - name: Wait for the upgraded node's pods to settle
-  # Node-scoped gate (harden G7): scope to THIS node via --field-selector spec.nodeName so benign
-  # cluster-wide Pending pods (no nodeName) drop out, while a stuck pod ON this node still fails the
-  # gate. Preferred over a cluster-wide count, which fails on unrelated churn during the window. The
-  # header line keeps the count >= 1, so < 2 means the node's own pods are all Running/Completed.
+  # Scope the pods-settled check to THIS node (--field-selector spec.nodeName); <2 non-Running lines = only the header.
   when: not skip_pods_running_check
   ansible.builtin.shell:
     cmd: >-

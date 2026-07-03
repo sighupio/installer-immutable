@@ -1,6 +1,5 @@
 ---
-# Open the maintenance window: cordon + drain so workloads are evicted before the disruptive layers (worker Kubernetes upgrade, OS reboot). kubectl on the controller (localhost); serial: 1 keeps one
-# node at a time so quorum is preserved.
+# Open the window: cordon + drain to evict workloads before the disruptive layers; serial:1 preserves quorum.
 - name: Drain the node
   ansible.builtin.command:
     cmd: >-

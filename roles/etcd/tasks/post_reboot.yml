@@ -13,8 +13,7 @@
   retries: 30
   delay: 5
 
-# Upgrade confirmed OK, so the pre-reboot snapshot is no longer needed; move it to tmpfs to self-clear and not pile up on the node.
-# find (not a glob) so an already-empty backup dir (e.g. an isolated re-run) is a no-op instead of a literal-glob mv failure.
+# Move the now-unneeded pre-reboot snapshot to /tmp; use find (not a glob) so an empty dir is a no-op.
 - name: Move the confirmed-safe etcd snapshot to /tmp so it does not accumulate
   ansible.builtin.shell:
     cmd: >-

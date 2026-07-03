@@ -1,7 +1,5 @@
 ---
-# Align the system extensions this role owns to the target versions in the furyctl-rendered version vars file
-# (group_vars/all.yml provides sysext_targets). The caller passes sysext_components (the component names it owns) and
-# reads sysext_changed_components afterwards to decide daemon restarts. Per-component logic lives in component.yml.
+# Align the caller's sysext_components to sysext_targets; caller reads sysext_changed_components to decide restarts.
 
 # sysext_arch needs the architecture fact; a play that skips fact gathering (or runs via --tags) won't have it.
 - name: Ensure the architecture fact is available
@@ -28,8 +26,7 @@
 # Activate in-band when the caller opts in; idempotent, so it runs even if a prior interrupted run already switched the symlink but never merged it.
 - name: Refresh the system-extension overlay
   when: sysext_refresh_after | default(false) | bool
-  # Keep the refresh unconditional (recovers an interrupted run that switched the symlink but never merged),
-  # but only report changed when this run actually staged something, so a clean re-run stays changed=0.
+  # Refresh unconditionally (recovers an interrupted run) but report changed only when this run staged something.
   changed_when: sysext_changed_components | length > 0
   ansible.builtin.command:
     cmd: systemd-sysext refresh

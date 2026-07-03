@@ -1,8 +1,5 @@
 ---
-# containerd_sandbox_image is the single source of truth for the pause image and is provided by the
-# furyctl-rendered version vars file (group_vars/all.yml, sourced from
-# immutable.yaml[kfd.immutable.version].sandboxImage). No version-keyed map lives here anymore.
-# For hand-runs without that file, pass it explicitly: -e containerd_sandbox_image=<registry>/pause:<tag>.
+# containerd_sandbox_image (pause image) comes from the rendered version vars; pass it with -e on hand-runs.
 containerd_cfg_dir: "/etc/containerd"
 ## CONTAINERD TOML SETTINGS
 containerd_systemd_dir: "/etc/systemd/system/containerd.service.d"

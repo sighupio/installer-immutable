@@ -1,6 +1,5 @@
 ---
-# OS layer — STAGE half: launches the Flatcar update asynchronously so the download runs IN PARALLEL with the sysext/k8s layers instead of blocking them. Non-disruptive (only writes the inactive
-# partition); wait/verify/reboot in os_reboot.yml.
+# STAGE half: launch the Flatcar update async (writes only the inactive partition); wait/reboot in os_reboot.yml.
 - name: Write update-engine configuration
   ansible.builtin.template:
     src: update.conf.j2
@@ -46,10 +45,7 @@
         src: "{{ os_update_marker_path }}"
 
     - name: Determine if the target version is already staged
-      # update-engine's own NEW_VERSION is authoritative; the marker is only a best-effort record written
-      # after a successful reboot. A prior attempt that staged the target but failed before the reboot
-      # (e.g. on drain) leaves the partition staged with no marker — recognise it via NEW_VERSION so the
-      # re-run reboots into it instead of discarding a valid stage the update server then won't re-offer.
+      # Trust update-engine's NEW_VERSION (not just the marker) so a re-run reuses an already-staged update it can't re-offer.
       ansible.builtin.set_fact:
         os_update_pending_reboot: "{{ 'UPDATE_STATUS_UPDATED_NEED_REBOOT' in os_update_pre_status.stdout }}"
         os_update_already_staged: >-

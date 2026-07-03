@@ -1,8 +1,5 @@
 ---
-# G5 (add-immutable-upgrade-gates): assert the Kubernetes version skew before invoking kubeadm. The worker's
-# live version is read via the controller (workers have no kubeconfig), and a jump greater than one minor is
-# refused before kubeadm runs, rather than trusting the immutable.yaml coupling alone. Skew 0 on an
-# already-upgraded node, so a re-run passes.
+# Refuse a >1-minor Kubernetes version skew before kubeadm runs (live version read via the controller).
 - name: Read the worker's current Kubernetes version for the skew check
   ansible.builtin.command:
     cmd: >-
@@ -27,10 +24,7 @@
       current {{ skew_current }} — kubeadm upgrade refused
     success_msg: "Version skew OK: {{ skew_current }} -> {{ skew_target }} (<= 1 minor)"
 
-# Worker Kubernetes upgrade: run kubeadm upgrade node (uses the kubeadm activated by the sysext layer) then restart
-# kubelet to pick up the new binary. The cordon/drain → uncordon envelope is handled by the 56 playbook.
-# --patches reapplies the node's kubelet config patch (written at provision) so a node-group's kubeletConfiguration
-# survives the upgrade.
+# kubeadm upgrade node with --patches (preserves kubelet config) then restart kubelet to pick up the new binary.
 - name: Upgrade the node with kubeadm
   ansible.builtin.command:
     cmd: kubeadm upgrade node --patches {{ kubelet_config_path }}/patches/

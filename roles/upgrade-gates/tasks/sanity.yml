@@ -1,9 +1,5 @@
 ---
-# G6 (add-immutable-upgrade-gates) — Post-upgrade node sanity. After the per-node upgrade + reboot, prove
-# the node actually runs the target software: the K8s binaries and the runtime are at the target version,
-# the sysext overlay is merged, and the node is Ready. A "green" run with the wrong binary or an unmounted
-# overlay fails loudly here. Binary/overlay checks run on the node (binaries are local via the sysext);
-# the Ready check delegates to the controller (admin.conf). Read-only, so it is safe to re-run.
+# Post-upgrade sanity: prove the node runs the target binaries/runtime, the sysext overlay is merged, and it is Ready.
 - name: Read the kubelet version
   ansible.builtin.command: kubelet --version
   register: node_upgrade_sanity_kubelet
@@ -29,8 +25,7 @@
   register: node_upgrade_sanity_sysext
   changed_when: false
 
-# Compare on the normalized semver (strip a leading v) so the target '1.34.8' matches a binary that prints
-# 'v1.34.8'. containerd's target comes from the furyctl-rendered sysext_targets; skip it if absent (hand-run).
+# Compare on normalized semver (strip leading v); skip the containerd check when its target is absent (hand-run).
 - name: Assert the Kubernetes binaries, runtime and overlay match the target
   vars:
     sanity_k8s: "{{ kubernetes_version | regex_replace('^v', '') }}"
