@@ -24,12 +24,12 @@
       current {{ skew_current }} — kubeadm upgrade node moves one minor at a time
     success_msg: "Upgrade step OK: {{ skew_current }} -> {{ skew_target }} (<= 1 minor per step)"
 
-# kubeadm upgrade node with --patches (preserves kubelet config) then restart kubelet to pick up the new binary.
+# kubeadm upgrade node with --patches, then restart kubelet to load the config kubeadm just rewrote (the reboot already activated the new binary).
 - name: Upgrade the node with kubeadm
   ansible.builtin.command:
     cmd: kubeadm upgrade node --patches {{ kubelet_config_path }}/patches/
   register: kube_worker_kubeadm_upgrade
   changed_when: kube_worker_kubeadm_upgrade.rc == 0
 
-- name: Restart kubelet to pick up the new system extension
+- name: Restart kubelet to load the post-reboot kubeadm upgrade config
   ansible.builtin.include_tasks: kubelet_restart.yml
