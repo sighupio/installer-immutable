@@ -1,6 +1,6 @@
 ---
-# Refuse a >1-minor Kubernetes version skew before kubeadm runs (live version read via the controller).
-- name: Read the worker's current Kubernetes version for the skew check
+# Refuse a >1-minor jump: kubeadm upgrades one minor per step (skipping minors unsupported). Version read live via the controller.
+- name: Read the worker's current Kubernetes version for the step-delta check
   ansible.builtin.command:
     cmd: >-
       {{ kubectl_bin }} get node {{ kubernetes_hostname }}
@@ -11,7 +11,7 @@
   register: kube_worker_skew_version
   changed_when: false
 
-- name: Assert the Kubernetes version skew is within one minor
+- name: Assert the kubeadm upgrade step is within one minor
   vars:
     skew_current: "{{ kube_worker_skew_version.stdout | regex_replace('^v', '') }}"
     skew_target: "{{ kubernetes_version | regex_replace('^v', '') }}"
@@ -20,9 +20,9 @@
       - skew_target.split('.')[0] | int == skew_current.split('.')[0] | int
       - (skew_target.split('.')[1] | int - skew_current.split('.')[1] | int) | abs <= 1
     fail_msg: >-
-      Kubernetes version-skew violation: target {{ skew_target }} is more than one minor from the worker's
-      current {{ skew_current }} — kubeadm upgrade refused
-    success_msg: "Version skew OK: {{ skew_current }} -> {{ skew_target }} (<= 1 minor)"
+      kubeadm one-minor-per-step limit: target {{ skew_target }} is more than one minor above the worker's
+      current {{ skew_current }} — kubeadm upgrade node moves one minor at a time
+    success_msg: "Upgrade step OK: {{ skew_current }} -> {{ skew_target }} (<= 1 minor per step)"
 
 # kubeadm upgrade node with --patches (preserves kubelet config) then restart kubelet to pick up the new binary.
 - name: Upgrade the node with kubeadm
