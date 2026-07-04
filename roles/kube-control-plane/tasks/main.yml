@@ -251,7 +251,7 @@
 
 - name: Apply kubelet-csr-approver CronJob
   ansible.builtin.command: >
-    kubectl apply --kubeconfig /etc/kubernetes/admin.conf -f /etc/kubernetes/kubelet-csr-approver.yaml --server-side
+    kubectl apply --kubeconfig /etc/kubernetes/super-admin.conf -f /etc/kubernetes/kubelet-csr-approver.yaml --server-side
   # Cluster-scoped CronJob: apply once, not once per control-plane node.
   run_once: true
   changed_when: true

@@ -6,7 +6,7 @@
       {{ kubectl_bin }} drain {{ kubernetes_hostname }}
       --grace-period=60 --timeout=360s --force
       --ignore-daemonsets --delete-emptydir-data
-      --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
   become: false
   delegate_to: localhost
   changed_when: true

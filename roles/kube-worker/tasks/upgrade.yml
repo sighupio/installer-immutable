@@ -5,7 +5,7 @@
     cmd: >-
       {{ kubectl_bin }} get node {{ kubernetes_hostname }}
       -o jsonpath={.status.nodeInfo.kubeletVersion}
-      --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
   become: false
   delegate_to: localhost
   register: kube_worker_skew_version

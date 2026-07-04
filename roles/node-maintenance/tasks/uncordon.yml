@@ -2,7 +2,7 @@
 # Close the window: uncordon only after the disruptive layers finish (node healthy), then wait for pods to settle.
 - name: Uncordon the node after letting it settle
   ansible.builtin.command:
-    cmd: "{{ kubectl_bin }} uncordon {{ kubernetes_hostname }} --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf"
+    cmd: "{{ kubectl_bin }} uncordon {{ kubernetes_hostname }} --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf"
   become: false
   delegate_to: localhost
   changed_when: true
@@ -15,7 +15,7 @@
       set -o pipefail;
       {{ kubectl_bin }} get pods -A -o wide
       --field-selector spec.nodeName={{ kubernetes_hostname }}
-      --kubeconfig {{ kubernetes_kubeconfig_path }}admin.conf
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
       | grep -cvE 'Running|Completed'
     executable: /bin/bash
   become: false
