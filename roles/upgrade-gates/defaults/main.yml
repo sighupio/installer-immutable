@@ -1,7 +1,7 @@
 ---
 # upgrade-gates: read-only assert-only gates — cluster health (pre), infra preflight (pre), post-upgrade sanity (post).
 
-# kubectl for controller-side checks; set an absolute path when it isn't on the non-interactive PATH.
+# kubectl for controller-side checks. furyctl injects the absolute path to its vendored kubectl at render time; this bare default is the hand-run fallback.
 kubectl_bin: kubectl
 # Controller-side kubeconfig directory; admin.conf is fetched here at install. Inventory sets this to "./".
 kubernetes_kubeconfig_path: "./"
