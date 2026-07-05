@@ -1,5 +1,9 @@
 ---
-# containerd_sandbox_image (pause image) comes from the rendered version vars; pass it with -e on hand-runs.
+# Registry: user's spec.kubernetes.advanced.registry wins via the furyctl inventory; this pin is the fallback.
+# Also in kube-control-plane/defaults for role independence (inventory overrides both). Mirrors on-premises.
+kubernetes_image_registry: "registry.sighup.io/fury/on-premises"
+# Sandbox image derived from registry + tag (tag from immutable.yaml, or -e) so a custom registry redirects it.
+containerd_sandbox_image: "{{ kubernetes_image_registry }}/pause:{{ containerd_sandbox_tag }}"
 containerd_cfg_dir: "/etc/containerd"
 ## CONTAINERD TOML SETTINGS
 containerd_systemd_dir: "/etc/systemd/system/containerd.service.d"
