@@ -71,7 +71,6 @@ kubernetes:
           image:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.1/flatcar_production_image.bin.bz2
-  # TEST entry — 1.35 as a copy of 1.34 with updated system extensions + OS, for upgrade testing.
   1.35.5:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.1"
