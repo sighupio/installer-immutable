@@ -119,7 +119,6 @@ kubernetes:
     flatcar:
       version: 4593.2.3
       channel: stable
-      # 4593.2.3 served from the sighup mirror (same host as the 1.34 entry).
       arch:
         x86-64:
           kernel:
