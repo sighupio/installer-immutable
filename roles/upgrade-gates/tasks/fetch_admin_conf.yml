@@ -1,35 +1,10 @@
 ---
-# Fetch super-admin.conf (system:masters, RBAC-independent) from a reachable control-plane so dedicated etcd works too.
-# Immutable is k8s >=1.29-only: super-admin.conf always exists on a healthy CP; if absent the CP is broken -> fail hard, no admin.conf fallback.
-# Dedicated file: the CP role rewrites ./admin.conf to the RBAC-bound admin mid-play and furyctl ships ./admin.conf to the operator, so super-admin lands here.
-- name: Fetch super-admin.conf from a reachable control-plane node
+# Fetch super-admin.conf (system:masters, RBAC-independent) from a control-plane; the controller-side kubectl gates use it (dedicated etcd + worker plays too).
+# Immutable is k8s >=1.29-only: super-admin.conf always exists on a healthy CP; if it is missing or the CP unreachable the fetch fails hard, no fallback.
+- name: Fetch super-admin.conf from a control-plane node
   run_once: true
+  delegate_to: "{{ groups['control_plane'] | first }}"
   ansible.builtin.fetch:
     src: /etc/kubernetes/super-admin.conf
     dest: ./super-admin.conf
     flat: true
-  delegate_to: "{{ item }}"
-  loop: "{{ groups['control_plane'] | default([]) }}"
-  ignore_unreachable: true
-  failed_when: false
-
-- name: Check whether super-admin.conf reached the controller
-  run_once: true
-  become: false # localhost read, no root
-  delegate_to: localhost
-  ansible.builtin.stat:
-    path: ./super-admin.conf
-  register: node_upgrade_super_admin_conf
-
-- name: Assert super-admin.conf was obtained from a control-plane
-  run_once: true
-  ansible.builtin.assert:
-    that:
-      - (groups['control_plane'] | default([]) | length) > 0
-      - node_upgrade_super_admin_conf.stat.exists
-    fail_msg: >-
-      super-admin.conf was not found on any control-plane host
-      ({{ groups['control_plane'] | default([]) | join(', ') }}). Immutable upgrades require Kubernetes >=1.29,
-      where super-admin.conf always exists on a healthy control-plane, so its absence means the control-plane is
-      broken. Fix it before upgrading.
-    success_msg: controller kubeconfig acquired from a control-plane for the upgrade run
