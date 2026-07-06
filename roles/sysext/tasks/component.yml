@@ -1,0 +1,109 @@
+---
+- name: Set component facts
+  ansible.builtin.set_fact:
+    sysext_comp_name: "{{ sysext_component.key }}"
+    sysext_comp_version: "{{ sysext_component.value.version }}"
+    sysext_comp_url: "{{ sysext_component.value.arch[sysext_arch].url }}"
+    sysext_comp_link: "{{ sysext_active_dir }}/{{ sysext_component.key }}.raw"
+
+- name: Check the active symlink for {{ sysext_comp_name }}
+  ansible.builtin.stat:
+    path: "{{ sysext_comp_link }}"
+  register: sysext_comp_stat
+
+# A component without an active symlink is not installed on this node (e.g. etcd on a worker) → leave it untouched.
+- name: Align {{ sysext_comp_name }}
+  when:
+    - sysext_comp_stat.stat.exists
+    - sysext_comp_stat.stat.islnk
+  block:
+    - name: Resolve active vs target file for {{ sysext_comp_name }}
+      ansible.builtin.set_fact:
+        sysext_comp_active_file: "{{ sysext_comp_stat.stat.lnk_target | basename }}"
+        sysext_comp_target_file: "{{ sysext_comp_name }}-{{ sysext_comp_version }}-{{ sysext_arch }}.raw"
+
+    - name: Stage and activate {{ sysext_comp_name }} {{ sysext_comp_version }}
+      when: sysext_comp_active_file != sysext_comp_target_file
+      block:
+        - name: Ensure the {{ sysext_comp_name }} store directory exists
+          ansible.builtin.file:
+            path: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        # get_url renames only on success and verifies the .raw against SHA256SUMS, so a bad/partial download never activates.
+        - name: Download the target .raw from the upstream release
+          ansible.builtin.get_url:
+            url: "{{ sysext_comp_url }}"
+            dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/{{ sysext_comp_target_file }}"
+            checksum: "sha256:{{ sysext_comp_url | dirname }}/SHA256SUMS"
+            owner: root
+            group: root
+            mode: "0644"
+
+        # Signature check on SHA256SUMS catches a host tampering with both .raw and sums; off by default (no signed release yet).
+        - name: Verify the {{ sysext_comp_name }} signature
+          when: sysext_verify_signature | bool
+          block:
+            - name: Fetch SHA256SUMS for {{ sysext_comp_name }}
+              ansible.builtin.get_url:
+                url: "{{ sysext_comp_url | dirname }}/SHA256SUMS"
+                dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS"
+                owner: root
+                group: root
+                mode: "0644"
+
+            - name: Fetch the SHA256SUMS signature for {{ sysext_comp_name }}
+              ansible.builtin.get_url:
+                url: "{{ sysext_comp_url | dirname }}/SHA256SUMS.{{ sysext_signature_ext }}"
+                dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS.{{ sysext_signature_ext }}"
+                owner: root
+                group: root
+                mode: "0644"
+
+            # A bad signature fails the task and leaves the symlink untouched, so the previous .raw stays active.
+            - name: Verify SHA256SUMS with cosign for {{ sysext_comp_name }}
+              when: sysext_signature_tool == 'cosign'
+              ansible.builtin.command:
+                cmd: >-
+                  cosign verify-blob
+                  --key {{ sysext_signature_key }}
+                  --signature {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS.{{ sysext_signature_ext }}
+                  {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS
+              changed_when: false
+
+            - name: Verify SHA256SUMS with gpg for {{ sysext_comp_name }}
+              when: sysext_signature_tool == 'gpg'
+              ansible.builtin.command:
+                cmd: >-
+                  gpg --no-default-keyring --keyring {{ sysext_signature_key }}
+                  --verify {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS.{{ sysext_signature_ext }}
+                  {{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS
+              changed_when: false
+
+        - name: Switch the active symlink for {{ sysext_comp_name }}
+          ansible.builtin.file:
+            src: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/{{ sysext_comp_target_file }}"
+            dest: "{{ sysext_comp_link }}"
+            state: link
+            force: true
+
+        - name: Record {{ sysext_comp_name }} as changed
+          ansible.builtin.set_fact:
+            sysext_changed_components: "{{ sysext_changed_components + [sysext_comp_name] }}"
+
+        # Keep current + previous only (previous = rollback target); never prune the active symlink's file.
+        - name: Prune old {{ sysext_comp_name }} .raw files, keeping current + previous
+          ansible.builtin.shell:
+            cmd: |
+              set -euo pipefail
+              cd "{{ sysext_extensions_store }}/{{ sysext_comp_name }}"
+              active="$(basename "$(readlink -f "{{ sysext_comp_link }}")")"
+              ls -1t {{ sysext_comp_name }}-*-{{ sysext_arch }}.raw \
+                | { grep -vxF "${active}" || true; } \
+                | tail -n +2 \
+                | xargs -r rm -f
+            executable: /bin/bash
+          changed_when: true

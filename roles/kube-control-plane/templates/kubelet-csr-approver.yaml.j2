@@ -51,7 +51,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: approver
-              image: {{ kubernetes_image_registry }}/kubelet-csr-approver:v1.0
+              image: {{ kubernetes_image_registry }}/kubelet-csr-approver:{{ kubelet_csr_approver_tag }}
               imagePullPolicy: IfNotPresent
               command: ["/usr/local/bin/csr-approver.sh"]
               env:

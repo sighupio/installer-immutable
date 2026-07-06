@@ -1,0 +1,59 @@
+---
+# Post-upgrade sanity: prove the node runs the target binaries/runtime, the sysext overlay is merged, and it is Ready.
+- name: Read the kubelet version
+  ansible.builtin.command: kubelet --version
+  register: node_upgrade_sanity_kubelet
+  changed_when: false
+
+- name: Read the kubeadm version
+  ansible.builtin.command: kubeadm version -o short
+  register: node_upgrade_sanity_kubeadm
+  changed_when: false
+
+- name: Read the kubectl client version
+  ansible.builtin.command: kubectl version --client -o yaml
+  register: node_upgrade_sanity_kubectl
+  changed_when: false
+
+- name: Read the container runtime version
+  ansible.builtin.command: containerd --version
+  register: node_upgrade_sanity_containerd
+  changed_when: false
+
+- name: Read the merged system-extension status
+  ansible.builtin.command: systemd-sysext status
+  register: node_upgrade_sanity_sysext
+  changed_when: false
+
+# Compare on normalized semver (strip leading v); skip the containerd check when its target is absent (hand-run).
+- name: Assert the Kubernetes binaries, runtime and overlay match the target
+  vars:
+    sanity_k8s: "{{ kubernetes_version | regex_replace('^v', '') }}"
+    sanity_containerd: "{{ (sysext_targets['containerd'].version | default('')) | regex_replace('^v', '') }}"
+  ansible.builtin.assert:
+    that:
+      - sanity_k8s in node_upgrade_sanity_kubelet.stdout
+      - sanity_k8s in node_upgrade_sanity_kubeadm.stdout
+      - sanity_k8s in node_upgrade_sanity_kubectl.stdout
+      - sanity_containerd == '' or sanity_containerd in node_upgrade_sanity_containerd.stdout
+      - "'kubernetes' in node_upgrade_sanity_sysext.stdout"
+    fail_msg: >-
+      Post-upgrade sanity FAILED on {{ inventory_hostname }}: expected Kubernetes {{ sanity_k8s }}
+      (kubelet='{{ node_upgrade_sanity_kubelet.stdout }}', kubeadm='{{ node_upgrade_sanity_kubeadm.stdout }}'),
+      containerd {{ sanity_containerd }} ('{{ node_upgrade_sanity_containerd.stdout }}'), or the kubernetes
+      sysext overlay is not mounted ('{{ node_upgrade_sanity_sysext.stdout }}')
+    success_msg: "Sanity OK on {{ inventory_hostname }}: K8s {{ sanity_k8s }} + containerd {{ sanity_containerd }} + overlay merged"
+
+- name: Assert the node reports Ready
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} wait --for=condition=Ready node/{{ kubernetes_hostname }}
+      --timeout=120s --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+  become: false
+  delegate_to: localhost
+  register: node_upgrade_sanity_ready
+  changed_when: false
+  # Retry transient API blips right after the reboot: kubectl wait exits on an API error, not just on timeout.
+  until: node_upgrade_sanity_ready.rc == 0
+  retries: 6
+  delay: 20

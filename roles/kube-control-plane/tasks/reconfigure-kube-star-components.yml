@@ -18,7 +18,7 @@
 - name: Backup current kubeadm-config configmap
   ansible.builtin.shell: >
     kubectl -n kube-system get cm kubeadm-config
-    -o yaml --kubeconfig /etc/kubernetes/admin.conf
+    -o yaml --kubeconfig /etc/kubernetes/super-admin.conf
     > {{ kubeadm_config_path }}/backups/kubeadm-config-backup-{{ timestamp }}.yaml
   changed_when: false
 

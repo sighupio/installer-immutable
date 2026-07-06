@@ -1,0 +1,15 @@
+---
+# upgrade-gates: read-only assert-only gates — cluster health (pre), infra preflight (pre), post-upgrade sanity (post).
+
+# kubectl for controller-side checks. furyctl injects the absolute path to its vendored kubectl at render time; this bare default is the hand-run fallback.
+kubectl_bin: kubectl
+# Controller-side kubeconfig directory; admin.conf is fetched here at install. Inventory sets this to "./".
+kubernetes_kubeconfig_path: "./"
+# Kubernetes node name used by the delegated kubectl checks.
+kubernetes_hostname: "{{ ansible_facts['fqdn'] }}"
+# sysext arch (x86-64/arm64) from rendered node_arch; the architecture-fact expression is only a hand-run fallback.
+sysext_arch: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
+
+# --- Infrastructure preflight (tasks/infra_preflight.yml) --------------
+# Min free space on / to stage the sysext .raw (OS image goes to the A/B partition); 1 GiB leaves ~9x margin.
+node_upgrade_min_free_bytes: 1073741824

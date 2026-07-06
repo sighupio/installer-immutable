@@ -1,0 +1,16 @@
+---
+# Helper role: align a subset of system extensions to the target versions in sysext_targets (from the rendered vars).
+
+# The .raw URL comes straight from sysext_targets[name].arch[arch].url; no release-base convention is rebuilt here.
+sysext_extensions_store: /opt/extensions
+sysext_active_dir: /etc/extensions
+# sysext arch (x86-64/arm64) from rendered node_arch; the architecture-fact expression is only a hand-run fallback.
+sysext_arch: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
+# Components whose .raw changed in this alignment; read by the calling role to decide daemon restarts.
+sysext_changed_components: []
+
+# Signature verification of the sysext artifact; disabled by default because releases publish only SHA256SUMS today.
+sysext_verify_signature: false
+sysext_signature_tool: cosign
+sysext_signature_key: ""
+sysext_signature_ext: sig

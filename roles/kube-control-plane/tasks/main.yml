@@ -191,6 +191,7 @@
 
 - name: Fetching admin.conf kubeconfig from the control plane
   run_once: true
+  # Unguarded on purpose: the operator kubeconfig furyctl ships; refreshed at upgrade after cert renewal, with no second fetch path.
   ansible.builtin.fetch:
     src: /etc/kubernetes/admin.conf
     dest: "{{ kubernetes_kubeconfig_path }}/admin.conf"
@@ -198,6 +199,8 @@
 
 - name: Fetching super-admin.conf kubeconfig from the control plane
   run_once: true
+  # Install-only: the upgrade plays fetch it via upgrade-gates/fetch_admin_conf.yml so the upgrade fetch stays centralized.
+  when: not (upgrade | default(false))
   ansible.builtin.fetch:
     src: /etc/kubernetes/super-admin.conf
     dest: "{{ kubernetes_kubeconfig_path }}/super-admin.conf"
@@ -227,6 +230,18 @@
   # if kubeadm join was executed, reconfiguring the kubelet does not change permissions of this file.
   when: not super_admin_conf_stat_result.stat.exists
 
+# kubeadm ships inside the kubernetes extension, so refresh it in-band to make the new kubeadm live before kubeadm upgrade apply.
+- name: Activate the kubernetes extension before the control-plane upgrade
+  ansible.builtin.include_role:
+    name: sysext
+    tasks_from: align.yml
+  vars:
+    sysext_components:
+      - kubernetes
+      - kubeadm
+    sysext_refresh_after: true
+  when: upgrade
+
 - name: Upgrade Kubernetes Control Plane
   ansible.builtin.include_tasks: upgrade.yml
   when: upgrade
@@ -239,5 +254,7 @@
 
 - name: Apply kubelet-csr-approver CronJob
   ansible.builtin.command: >
-    kubectl apply --kubeconfig /etc/kubernetes/admin.conf -f /etc/kubernetes/kubelet-csr-approver.yaml --server-side
+    kubectl apply --kubeconfig /etc/kubernetes/super-admin.conf -f /etc/kubernetes/kubelet-csr-approver.yaml --server-side
+  # Cluster-scoped CronJob: apply once, not once per control-plane node.
+  run_once: true
   changed_when: true

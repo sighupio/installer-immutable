@@ -31,23 +31,25 @@ If you are new to SD please refer to the [official documentation][sd-docs] on ho
 
 The following roles are included in the SIGHUP Distribution Immutable Installer:
 
-| Role                                           | Description                                                                      |
-| ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| [containerd](roles/containerd)                 | Ansible role to configure containerd as container runtime                        |
-| [etcd](roles/etcd)                             | Ansible role to configure etcd standalone or in the control plane machines       |
-| [haproxy](roles/haproxy)                       | Ansible role to configure HAProxy as load balancer for the APIServer (and other) |
-| [keepalived](roles/keepalived)                 | Ansible role to configure keepalived for a shared Virtual IP between nodes (HA)  |
-| [kube-control-plane](roles/kube-control-plane) | Ansible role to configure control-plane nodes                                    |
-| [kube-worker](roles/kube-worker)               | Ansible role to configure worker nodes and join them to the cluster              |
-| [sysctl](roles/sysctl)                         | Ansible role to configure kernel paramaters on the machines                      |
+| Role                                           | Description                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [containerd](roles/containerd)                 | Ansible role to configure containerd as container runtime                                        |
+| [etcd](roles/etcd)                             | Ansible role to configure etcd standalone or in the control plane machines                       |
+| [haproxy](roles/haproxy)                       | Ansible role to configure HAProxy as load balancer for the APIServer (and other)                 |
+| [keepalived](roles/keepalived)                 | Ansible role to configure keepalived for a shared Virtual IP between nodes (HA)                  |
+| [kube-control-plane](roles/kube-control-plane) | Ansible role to configure control-plane nodes                                                    |
+| [kube-worker](roles/kube-worker)               | Ansible role to configure worker nodes and join them to the cluster                              |
+| [node-maintenance](roles/node-maintenance)     | Upgrade task-file library: the cordon/drain → uncordon maintenance envelope (preflight decision) |
+| [os-upgrade](roles/os-upgrade)                 | Upgrade task-file library: the Flatcar A/B OS update (stage, reboot, mark good)                  |
+| [sysctl](roles/sysctl)                         | Ansible role to configure kernel paramaters on the machines                                      |
+| [sysext](roles/sysext)                         | Helper role to align binary system extensions to their target versions                           |
+| [upgrade-gates](roles/upgrade-gates)           | Upgrade task-file library: read-only validation gates (cluster health, infra preflight, sanity)  |
 
 Click on each package to see its full documentation.
 
 ## Compatibility
 
-This version is compatible with Kubernetes 1.34.4 plus the complete list in the compatibility matrix.
-
-Check the [compatibility matrix][compatibility-matrix] for additional information about previous releases of the module.
+Check the [compatibility matrix][compatibility-matrix] for information about compatibility of the installer.
 
 ## Usage
 

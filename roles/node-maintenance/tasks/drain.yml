@@ -1,0 +1,17 @@
+---
+# Open the window: cordon + drain to evict workloads before the disruptive layers; serial:1 preserves quorum.
+- name: Drain the node
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} drain {{ kubernetes_hostname }}
+      --grace-period=60 --timeout=360s --force
+      --ignore-daemonsets --delete-emptydir-data
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+  become: false
+  delegate_to: localhost
+  # Retry: a transient etcd/API timeout while evicting must not abort the whole upgrade; drain is idempotent.
+  register: node_drain
+  until: node_drain.rc == 0
+  retries: 3
+  delay: 15
+  changed_when: true

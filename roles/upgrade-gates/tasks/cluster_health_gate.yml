@@ -1,0 +1,67 @@
+---
+# Pre-upgrade cluster-health gate (run_once): aborts the whole run before any node is touched if a check fails.
+- name: Read every node's Ready condition
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} get nodes
+      -o jsonpath='{range .items[*]}{.metadata.name}{"="}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+  become: false
+  delegate_to: localhost
+  register: node_upgrade_gate_nodes
+  changed_when: false
+
+# kubectl returning 0 already proves the API server is reachable; the parsed lines give per-node Ready.
+- name: Assert the API server is reachable and every node is Ready
+  ansible.builtin.assert:
+    that:
+      - node_upgrade_gate_nodes.stdout_lines | reject('search', '=True$') | reject('equalto', '') | list | length == 0
+    fail_msg: >-
+      Pre-upgrade health gate FAILED (nodes Ready): not all nodes report Ready —
+      {{ node_upgrade_gate_nodes.stdout_lines | reject('search', '=True$') | reject('equalto', '') | list }}
+    success_msg: API server reachable and all nodes report Ready
+
+- name: Read each node's kubelet version
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} get nodes
+      -o jsonpath='{range .items[*]}{.status.nodeInfo.kubeletVersion}{"\n"}{end}'
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+  become: false
+  delegate_to: localhost
+  register: node_upgrade_gate_versions
+  changed_when: false
+
+# Allow a uniform cluster or a 2-version mix that includes the target (resumable); abort on anything else.
+- name: Assert the cluster is uniform or resumable toward the target
+  vars:
+    gate_versions: "{{ node_upgrade_gate_versions.stdout_lines | reject('equalto', '') | map('regex_replace', '^v', '') | unique | list }}"
+    gate_target: "{{ kubernetes_version | regex_replace('^v', '') }}"
+  ansible.builtin.assert:
+    that:
+      - gate_versions | length <= 1 or (gate_versions | length == 2 and gate_target in gate_versions)
+    fail_msg: >-
+      Pre-upgrade health gate FAILED (partial upgrade): nodes report versions {{ gate_versions }}, which is
+      neither uniform nor an in-progress upgrade toward the target {{ gate_target }} — resolve before upgrading
+    success_msg: "Cluster version state OK (uniform or resumable toward {{ gate_target }})"
+
+# Source the etcd role's etcdctl env and check whole-cluster health; a non-zero rc fails the assert below.
+- name: Check etcd cluster health
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      source /etc/profile.d/etcdctl.sh;
+      etcdctl endpoint health --cluster
+    executable: /bin/bash
+  register: node_upgrade_gate_etcd
+  changed_when: false
+  failed_when: false
+
+- name: Assert etcd reports the whole cluster healthy
+  ansible.builtin.assert:
+    that:
+      - node_upgrade_gate_etcd.rc == 0
+    fail_msg: >-
+      Pre-upgrade health gate FAILED (etcd): etcdctl endpoint health --cluster did not report all members
+      healthy — {{ node_upgrade_gate_etcd.stdout }} {{ node_upgrade_gate_etcd.stderr }}
+    success_msg: etcd endpoint health --cluster reports all members healthy

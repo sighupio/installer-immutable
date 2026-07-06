@@ -1,0 +1,24 @@
+---
+# node-maintenance: the single cordon/drain → uncordon window (preflight decides, drain opens, uncordon closes).
+
+# --- Layer signals the preflight decision reads (set true at play level by 55/56) ---
+upgrade: false
+os_update_apply: false
+os_update_reboot: false
+# Empty at preflight time: sysext aligns later, so the drain decision uses OS-reboot-pending + worker k8s-behind.
+sysext_changed_components: []
+
+# --- Drain decision + window ------------------------------------------------
+# Set by preflight.yml: whether this run disrupts the node and needs a drain window; default false = no drain.
+node_upgrade_drain_required: false
+# Post-uncordon pod-settle wait (kubectl on the controller).
+skip_pods_running_check: false
+pods_running_retries: 20
+
+# --- Controller-side kubectl access -----------------------------------------
+# kubectl for controller-side calls; set an absolute path when it isn't on the non-interactive PATH.
+kubectl_bin: kubectl
+# Controller-side kubeconfig directory; admin.conf is fetched here at install. Inventory sets this to "./".
+kubernetes_kubeconfig_path: "./"
+# Kubernetes node name used by the delegated kubectl drain/uncordon.
+kubernetes_hostname: "{{ ansible_facts['fqdn'] }}"

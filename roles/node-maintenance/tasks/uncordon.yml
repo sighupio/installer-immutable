@@ -1,0 +1,27 @@
+---
+# Close the window: uncordon only after the disruptive layers finish (node healthy), then wait for pods to settle.
+- name: Uncordon the node after letting it settle
+  ansible.builtin.command:
+    cmd: "{{ kubectl_bin }} uncordon {{ kubernetes_hostname }} --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf"
+  become: false
+  delegate_to: localhost
+  changed_when: true
+
+- name: Wait for the upgraded node's pods to settle
+  # Scope the pods-settled check to THIS node (--field-selector spec.nodeName); <2 non-Running lines = only the header.
+  when: not skip_pods_running_check
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      {{ kubectl_bin }} get pods -A -o wide
+      --field-selector spec.nodeName={{ kubernetes_hostname }}
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+      | grep -cvE 'Running|Completed'
+    executable: /bin/bash
+  become: false
+  delegate_to: localhost
+  register: node_upgrade_pods_not_ready
+  until: node_upgrade_pods_not_ready.stdout | int < 2
+  retries: "{{ pods_running_retries }}"
+  delay: 15
+  changed_when: false

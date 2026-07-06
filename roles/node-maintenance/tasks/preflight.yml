@@ -1,0 +1,39 @@
+---
+# Decide up front whether this run disrupts the node so every disruptive layer shares one drain window.
+- name: Read the worker's current Kubernetes version
+  when:
+    - upgrade | bool
+    - inventory_hostname in groups['nodes']
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} get node {{ kubernetes_hostname }}
+      -o jsonpath={.status.nodeInfo.kubeletVersion}
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+  become: false
+  delegate_to: localhost
+  register: node_upgrade_worker_version
+  changed_when: false
+
+- name: Flag whether the worker is behind the target Kubernetes version
+  when:
+    - upgrade | bool
+    - inventory_hostname in groups['nodes']
+  ansible.builtin.set_fact:
+    node_upgrade_k8s_behind: >-
+      {{ (node_upgrade_worker_version.stdout | default('') | regex_replace('^v', ''))
+         != (kubernetes_version | regex_replace('^v', '')) }}
+
+# An in-band OS reboot only runs when os_update_apply + os_update_reboot are set AND the node is actually behind the target Flatcar version (os-upgrade/os_stage asserts not-newer and stages only when behind).
+- name: Decide whether an in-band OS reboot will run
+  ansible.builtin.set_fact:
+    node_upgrade_os_reboot_pending: >-
+      {{ (os_update_apply | bool) and (os_update_reboot | bool)
+         and (ansible_facts['distribution_version'] is version(os_update_target_version, '<')) }}
+
+# Drain only when disrupted: a worker behind/with a swapped binary, or any node rebooting for the OS.
+- name: Decide whether the maintenance window (drain) is required
+  ansible.builtin.set_fact:
+    node_upgrade_drain_required: >-
+      {{ node_upgrade_os_reboot_pending
+         or ((inventory_hostname in groups['nodes']) and (upgrade | bool)
+             and ((node_upgrade_k8s_behind | default(false)) or (sysext_changed_components | length > 0))) }}
