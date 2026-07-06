@@ -49,9 +49,7 @@ Click on each package to see its full documentation.
 
 ## Compatibility
 
-This version is compatible with Kubernetes 1.34.4 plus the complete list in the compatibility matrix.
-
-Check the [compatibility matrix][compatibility-matrix] for additional information about previous releases of the module.
+Check the [compatibility matrix][compatibility-matrix] for information about compatibility of the installer.
 
 ## Usage
 
