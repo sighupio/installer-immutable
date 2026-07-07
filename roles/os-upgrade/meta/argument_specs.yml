@@ -11,7 +11,7 @@ argument_specs:
         type: str
         required: true
         description: >-
-          Target Flatcar version. Provided externally (group_vars/all.yml on furyctl runs, or -e);
+          Target Flatcar version. Provided externally (rendered playbook vars / inventory on furyctl runs, or -e);
           drives the downgrade assert, behind-target detection, and already-staged comparison.
       os_update_conf_path:
         type: path
@@ -60,7 +60,7 @@ argument_specs:
         type: str
         required: true
         description: >-
-          Target Flatcar version. Provided externally (group_vars/all.yml on furyctl runs, or -e);
+          Target Flatcar version. Provided externally (rendered playbook vars / inventory on furyctl runs, or -e);
           drives the staged-version assert, marker content, and booted-version assert.
       os_update_reboot:
         type: bool
