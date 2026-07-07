@@ -72,6 +72,24 @@
         loop_var: item
         label: "{{ item.role }}/{{ item.entry }}"
 
+    - name: Coverage - a negative fixture exists for every entry-point with a required var
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/fixtures/{{ item.role }}/{{ item.entry }}.negative.yml"
+      register: negfix
+      loop: "{{ manifest | rejectattr('required', 'equalto', []) | list }}"
+      loop_control:
+        label: "{{ item.role }}/{{ item.entry }}"
+
+    - name: Coverage - fail on any missing negative fixture
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: "No negative fixture for {{ item.item.role }}/{{ item.item.entry }}"
+        quiet: true
+      loop: "{{ negfix.results }}"
+      loop_control:
+        label: "{{ item.item.role }}/{{ item.item.entry }}"
+
     - name: Negative - omitting a required var MUST fail validation
       ansible.builtin.include_tasks: _negative.yml
       loop: "{{ manifest | selectattr('required', 'defined') | rejectattr('required', 'equalto', []) | list }}"
