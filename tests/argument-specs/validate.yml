@@ -1,0 +1,89 @@
+---
+# Argument-specs harness: validate every role x entry-point spec against fixtures on
+# localhost with ansible.builtin.validate_argument_spec. No role tasks run, no cluster.
+# Coverage: fails if a declared spec entry has no fixture, or manifest drifts from specs.
+- name: Validate role argument specs against fixtures
+  hosts: localhost
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/../.."
+    manifest: "{{ lookup('file', playbook_dir ~ '/manifest.yml') | from_yaml }}"
+  tasks:
+    - name: Find role argument_specs files
+      ansible.builtin.find:
+        paths: "{{ repo }}/roles"
+        patterns: "argument_specs.yml"
+        recurse: true
+      register: spec_find
+
+    - name: Collect declared role/entry pairs from the specs themselves
+      ansible.builtin.set_fact:
+        declared_keys: >-
+          {%- set out = [] -%}
+          {%- for fpath in spec_find.files | map(attribute='path') -%}
+          {%- set role = fpath.split('/')[-3] -%}
+          {%- for ep in (lookup('file', fpath) | from_yaml).argument_specs.keys() -%}
+          {%- set _ = out.append(role ~ '/' ~ ep) -%}
+          {%- endfor -%}{%- endfor -%}
+          {{ out | sort }}
+        manifest_keys: >-
+          {%- set out = [] -%}
+          {%- for m in manifest -%}{%- set _ = out.append(m.role ~ '/' ~ m.entry) -%}{%- endfor -%}
+          {{ out | sort }}
+
+    - name: Coverage - manifest matches the actual declared spec entries (no drift)
+      ansible.builtin.assert:
+        that:
+          - declared_keys == manifest_keys
+        fail_msg: >-
+          Spec entries and manifest diverge.
+          only-in-specs={{ declared_keys | difference(manifest_keys) }}
+          only-in-manifest={{ manifest_keys | difference(declared_keys) }}
+        success_msg: "{{ manifest_keys | length }} declared entry-points, all in manifest."
+
+    - name: Coverage - a positive fixture exists for every entry-point
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/fixtures/{{ item.role }}/{{ item.entry }}.positive.yml"
+      register: posfix
+      loop: "{{ manifest }}"
+      loop_control:
+        label: "{{ item.role }}/{{ item.entry }}"
+
+    - name: Coverage - fail on any missing positive fixture
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: "No positive fixture for {{ item.item.role }}/{{ item.item.entry }}"
+        quiet: true
+      loop: "{{ posfix.results }}"
+      loop_control:
+        label: "{{ item.item.role }}/{{ item.item.entry }}"
+
+    - name: Positive - real caller variables MUST pass validation
+      ansible.builtin.validate_argument_spec:
+        argument_spec: >-
+          {{ (lookup('file', repo ~ '/roles/' ~ item.role ~ '/meta/argument_specs.yml')
+              | from_yaml).argument_specs[item.entry].options | default({}) }}
+        provided_arguments: >-
+          {{ lookup('file', playbook_dir ~ '/fixtures/' ~ item.role ~ '/' ~ item.entry
+              ~ '.positive.yml') | from_yaml }}
+      loop: "{{ manifest }}"
+      loop_control:
+        loop_var: item
+        label: "{{ item.role }}/{{ item.entry }}"
+
+    - name: Negative - omitting a required var MUST fail validation
+      ansible.builtin.include_tasks: _negative.yml
+      loop: "{{ manifest | selectattr('required', 'defined') | rejectattr('required', 'equalto', []) | list }}"
+      loop_control:
+        loop_var: m
+        label: "{{ m.role }}/{{ m.entry }}"
+
+    - name: Summary
+      ansible.builtin.assert:
+        that:
+          - (neg_ok | default([]) | length) == (manifest | rejectattr('required', 'equalto', []) | list | length)
+        fail_msg: "Some negative fixtures did not fail as expected: got {{ neg_ok | default([]) }}"
+        success_msg: >-
+          harness green: {{ manifest | length }} positive passed,
+          {{ neg_ok | default([]) | length }} negative failed-as-expected.

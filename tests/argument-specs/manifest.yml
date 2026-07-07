@@ -1,0 +1,71 @@
+---
+# Generated (Fase 4) from contract-table.json. role/entry + required options.
+# Coverage source of truth: validate.yml asserts specs match this and fixtures exist.
+- role: containerd
+  entry: main
+  required:
+    - containerd_sandbox_tag
+- role: etcd
+  entry: main
+  required: []
+- role: etcd
+  entry: pre_reboot
+  required: []
+- role: etcd
+  entry: post_reboot
+  required: []
+- role: haproxy
+  entry: main
+  required:
+    - haproxy_container_image
+    - haproxy_container_tag
+- role: keepalived
+  entry: main
+  required: []
+- role: kube-control-plane
+  entry: main
+  required:
+    - kubernetes_version
+    - kubelet_csr_approver_tag
+- role: kube-worker
+  entry: main
+  required: []
+- role: node-maintenance
+  entry: preflight
+  required: []
+- role: node-maintenance
+  entry: drain
+  required: []
+- role: node-maintenance
+  entry: uncordon
+  required: []
+- role: os-upgrade
+  entry: os_stage
+  required:
+    - os_update_target_version
+- role: os-upgrade
+  entry: os_reboot
+  required:
+    - os_update_target_version
+- role: sysctl
+  entry: main
+  required: []
+- role: sysext
+  entry: align
+  required:
+    - sysext_targets
+    - sysext_components
+- role: upgrade-gates
+  entry: fetch_admin_conf
+  required: []
+- role: upgrade-gates
+  entry: infra_preflight
+  required: []
+- role: upgrade-gates
+  entry: sanity
+  required:
+    - kubernetes_version
+- role: upgrade-gates
+  entry: cluster_health_gate
+  required:
+    - kubernetes_version

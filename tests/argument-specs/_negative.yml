@@ -1,0 +1,20 @@
+---
+# One negative case: validating a fixture that omits a required var MUST fail.
+# block/rescue turns the expected failure into a recorded success (neg_ok).
+- name: "Negative {{ m.role }}/{{ m.entry }} (expect validation failure)"
+  block:
+    - name: "Validate negative fixture {{ m.role }}/{{ m.entry }}"
+      ansible.builtin.validate_argument_spec:
+        argument_spec: >-
+          {{ (lookup('file', repo ~ '/roles/' ~ m.role ~ '/meta/argument_specs.yml')
+              | from_yaml).argument_specs[m.entry].options | default({}) }}
+        provided_arguments: >-
+          {{ lookup('file', playbook_dir ~ '/fixtures/' ~ m.role ~ '/' ~ m.entry
+              ~ '.negative.yml') | from_yaml }}
+    - name: "Negative {{ m.role }}/{{ m.entry }} unexpectedly passed"
+      ansible.builtin.fail:
+        msg: "Missing required var was NOT caught for {{ m.role }}/{{ m.entry }}"
+  rescue:
+    - name: "Record expected failure for {{ m.role }}/{{ m.entry }}"
+      ansible.builtin.set_fact:
+        neg_ok: "{{ (neg_ok | default([])) + [m.role ~ '/' ~ m.entry] }}"
