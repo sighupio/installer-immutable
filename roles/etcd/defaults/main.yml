@@ -18,7 +18,7 @@ etcd_advertise_client_urls: "https://{{ ansible_facts['default_ipv4'].address }}
 etcd_metrics_address: "{{ ansible_facts['default_ipv4'].address }}"
 etcd_metrics_port: 2378
 
-# Cluster (MUST be defined in inventory/group_vars or playbook)
+# Cluster identity — supplied via inventory or playbook vars at run time; see meta/argument_specs.yml.
 etcd_initial_cluster: ""
 etcd_initial_cluster_state: "new"
 # This is the Ansible group name that contains the etcd nodes, by default we consider
