@@ -1,0 +1,301 @@
+---
+argument_specs:
+  main:
+    short_description: Bootstrap or upgrade a Kubernetes control-plane node with kubeadm
+    description: Renders kubeadm/kubelet/audit/admission config, runs kubeadm init or upgrade, and provisions user kubeconfigs.
+    options:
+      kubernetes_version:
+        type: str
+        required: true
+        description: Kubernetes version rendered into kubeadm.yml.j2 (kubernetesVersion and version-gated cloud-provider/cloud-config flags).
+      kubelet_csr_approver_tag:
+        type: str
+        required: true
+        description: Image tag for the kubelet-csr-approver deployment rendered into kubelet-csr-approver.yaml.j2.
+      kubernetes_local_pki_dir:
+        type: path
+        required: false
+        default: "../pki/master"
+        description: Local copy source directory for ca/front-proxy/sa PKI files.
+      audit_log_dir:
+        type: path
+        required: false
+        default: /var/log/kubernetes
+        description: Audit log directory, also used for kubeadm audit-log-path and apiserver extraVolumes.
+      audit_policy_config_path:
+        type: path
+        required: false
+        default: /etc/kubernetes/audit.yaml
+        description: Copy destination for the audit policy and kubeadm audit-policy-file/extraVolumes mount.
+      kubernetes_encryption_config:
+        type: path
+        required: false
+        default: ""
+        description: Copy source for the encryption config; guarded and gates encryption blocks when non-empty.
+      kubernetes_remote_encryption_config:
+        type: path
+        required: false
+        default: "/etc/kubernetes/encryption-config.yml"
+        description: Copy destination and kubeadm encryption-provider-config/extraVolumes path.
+      kubeadm_config_file:
+        type: path
+        required: false
+        default: /etc/kubernetes/kubeadm.yml
+        description: Rendered kubeadm config destination used for validate, init, and kubeconfig user.
+      kubeadm_patches_path:
+        type: path
+        required: false
+        default: /etc/kubernetes/patches/
+        description: Directory for kubeadm patch files and kubeadm.yml.j2 patches.directory.
+      kubeadm_config_path:
+        type: path
+        required: false
+        default: /etc/kubernetes/kubeadm-config
+        description: Directory for kubeadm-config; also used by the conditionally-included reconfigure tasks.
+      kubernetes_users_kubeconfig_dir:
+        type: path
+        required: false
+        default: /etc/kubernetes/users
+        description: Directory where per-user kubeconfigs are generated and fetched from.
+      kubernetes_users_names:
+        type: list
+        required: false
+        default: []
+        description: List of user names to generate kubeconfigs for; empty means no users.
+      kubernetes_users_org:
+        type: str
+        required: false
+        default: sighup
+        description: Organization passed to kubeadm kubeconfig user --org.
+      kubernetes_kubeconfig_path:
+        type: path
+        required: false
+        default: "."
+        description: Local fetch destination for user kubeconfigs, admin.conf, and super-admin.conf.
+      upgrade:
+        type: bool
+        required: false
+        default: false
+        description: When true, run the upgrade path (sysext + upgrade tasks) instead of a fresh init.
+      kubernetes_hostname:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: Node name set in kubeadm nodeRegistration.name; defaults to the fqdn fact.
+      kubernetes_apiserver_advertise_address:
+        type: str
+        required: false
+        default: "{{ ansible_facts['default_ipv4'].address }}"
+        description: Local API server advertise address; defaults to the default_ipv4 fact.
+      kubernetes_control_plane_address:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: Cluster controlPlaneEndpoint rendered into kubeadm.yml.j2.
+      kubernetes_cluster_name:
+        type: str
+        required: false
+        default: "immutable-dev"
+        description: Cluster name rendered into kubeadm.yml.j2 clusterName.
+      kubernetes_image_registry:
+        type: str
+        required: false
+        default: "registry.sighup.io/fury/on-premises"
+        description: Image repository for kubeadm imageRepository/dns and the kubelet-csr-approver image.
+      coredns_image_prefix:
+        type: str
+        required: false
+        default: "/coredns"
+        description: CoreDNS image path suffix appended to dns.imageRepository (rendered when non-empty).
+      kubernetes_pod_cidr:
+        type: str
+        required: false
+        default: "10.32.0.0/16"
+        description: Pod subnet for kubeadm podSubnet and KubeProxyConfiguration clusterCIDR.
+      kubernetes_svc_cidr:
+        type: str
+        required: false
+        default: "10.96.0.0/16"
+        description: Service subnet rendered into kubeadm serviceSubnet.
+      kubernetes_cloud_provider:
+        type: str
+        required: false
+        default: ""
+        description: cloud-provider flag for kubelet and controller-manager; apiserver only when set and version < 1.33.
+      kubernetes_cloud_config:
+        type: str
+        required: false
+        default: ""
+        description: cloud-config path and extraVolumes mount, rendered when non-empty.
+      kubernetes_apiserver_certSANs:
+        type: list
+        required: false
+        default: []
+        description: Extra subject alternative names (IPs or domains) for the API server certificate.
+      etcd_endpoints:
+        type: list
+        required: false
+        default: ["https://127.0.0.1:2379"]
+        description: External etcd endpoints rendered into kubeadm etcd.external.endpoints.
+      etcd_ca_file:
+        type: path
+        required: false
+        default: "/etc/etcd/pki/etcd/ca.crt"
+        description: External etcd CA certificate path (kubeadm etcd caFile).
+      etcd_key_file:
+        type: path
+        required: false
+        default: "/etc/etcd/pki/apiserver-etcd-client.key"
+        description: External etcd client key path (kubeadm etcd keyFile).
+      etcd_cert_file:
+        type: path
+        required: false
+        default: "/etc/etcd/pki/apiserver-etcd-client.crt"
+        description: External etcd client certificate path (kubeadm etcd certFile).
+      audit_policy_max_age:
+        type: int
+        required: false
+        default: 30
+        description: Value for kubeadm audit-log-maxage.
+      audit_policy_max_size:
+        type: int
+        required: false
+        default: 100
+        description: Value for kubeadm audit-log-maxsize.
+      audit_policy_max_backup:
+        type: int
+        required: false
+        default: 10
+        description: Value for kubeadm audit-log-maxbackup.
+      eventratelimits:
+        type: list
+        required: false
+        default:
+          - type: Server
+            qps: 500
+            burst: 2000
+          - type: Namespace
+            qps: 20
+            burst: 100
+            cacheSize: 4096
+          - type: User
+            qps: 20
+            burst: 100
+            cacheSize: 4096
+        description: EventRateLimit admission limits looped over in admission-config.yaml.j2.
+      terminated_pod_gc_threshold:
+        type: int
+        required: false
+        default: 500
+        description: controller-manager terminated-pod-gc-threshold rendered into kubeadm.yml.j2.
+      tls_cipher_suites:
+        type: list
+        required: false
+        default:
+          - TLS_AES_128_GCM_SHA256
+          - TLS_AES_256_GCM_SHA384
+          - TLS_CHACHA20_POLY1305_SHA256
+          - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+        description: TLS cipher suites for apiserver, scheduler, and controller-manager.
+      kubelet_certificate_authority_file:
+        type: path
+        required: false
+        default: /etc/kubernetes/pki/ca.crt
+        description: CA file for the apiserver kubelet-certificate-authority flag.
+      oidc_issuer_url:
+        type: str
+        required: false
+        default: ""
+        description: OIDC issuer URL; gates the whole OIDC apiserver block when non-empty.
+      oidc_client_id:
+        type: str
+        required: false
+        default: ""
+        description: OIDC client id rendered within the OIDC block.
+      oidc_ca_file:
+        type: path
+        required: false
+        default: /etc/ssl/certs/ca-certificates.crt
+        description: CA file for the apiserver oidc-ca-file flag.
+      oidc_username_claim:
+        type: str
+        required: false
+        default: email
+        description: JWT claim used as the username (oidc-username-claim).
+      oidc_username_prefix:
+        type: str
+        required: false
+        default: "oidc:"
+        description: Prefix prepended to OIDC usernames (oidc-username-prefix).
+      oidc_groups_claim:
+        type: str
+        required: false
+        default: groups
+        description: JWT claim used for groups (oidc-groups-claim).
+      oidc_groups_prefix:
+        type: str
+        required: false
+        default: "oidc:"
+        description: Prefix prepended to OIDC groups (oidc-groups-prefix).
+      kubeadm_skip_phases:
+        type: list
+        required: false
+        default: []
+        description: Phases to skip, rendered into kubeadm skipPhases (init and upgrade templates).
+      kubelet_tls_cipher_suites:
+        type: list
+        required: false
+        default:
+          - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        description: TLS cipher suites for the kubelet (KubeletConfiguration tlsCipherSuites).
+      kubelet_config_streaming_connection_idle_timeout:
+        type: str
+        required: false
+        default: "5m"
+        description: Kubelet streamingConnectionIdleTimeout in KubeletConfiguration.
+      kubelet_config_read_only_port:
+        type: int
+        required: false
+        default: 0
+        description: Kubelet readOnlyPort in KubeletConfiguration.
+      kubelet_config_server_tls_bootstrap:
+        type: bool
+        required: false
+        default: true
+        description: Kubelet serverTLSBootstrap in KubeletConfiguration.
+      kubelet_config_pod_pids_limit:
+        type: int
+        required: false
+        default: 4096
+        description: Kubelet podPidsLimit in KubeletConfiguration.
+      kubelet_config_cgroup_driver:
+        type: str
+        required: false
+        default: "systemd"
+        description: Kubelet cgroupDriver in KubeletConfiguration.
+      kubernetes_taints:
+        type: list
+        required: false
+        description: Node taints rendered into kubeadm nodeRegistration.taints; only applied when defined.
+      kubeadm_upgrade_config_file:
+        type: path
+        required: false
+        default: /etc/kubernetes/kubeadm-upgrade-config.yml
+        description: Rendered upgrade config destination used by kubeadm upgrade apply --config.
+      kubelet_config_path:
+        type: path
+        required: false
+        default: /var/lib/kubelet/kubelet-config
+        description: Base directory for the kubelet KubeletConfiguration patch and its patches subdir.
