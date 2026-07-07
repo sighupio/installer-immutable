@@ -3,5 +3,5 @@
 # MUST fail validate_argument_spec (asserted via block/rescue).
 kubelet_csr_approver_tag: v1.0
 kubernetes_kubeconfig_path: ./
-kubernetes_local_pki_dir: /home/smerlos/dev-env/fury-devenv/pki/master
+kubernetes_local_pki_dir: /etc/kubernetes/pki
 upgrade: true

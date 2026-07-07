@@ -1,4 +1,4 @@
 ---
 # Positive fixture for keepalived/main: declared-option projection of the
 # furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
-keepalived_ip: 192.168.200.20
+keepalived_ip: 10.0.0.254
