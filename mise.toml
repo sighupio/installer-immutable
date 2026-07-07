@@ -21,3 +21,7 @@ run = "yamlfmt -lint"
 [tasks."lint-prod"]
 description = "Alias of lint (production profile is the default)"
 depends = ["lint"]
+
+[tasks."test:argument-specs"]
+description = "Validate role argument specs against fixtures (localhost, no cluster)"
+run = "ansible-playbook tests/argument-specs/validate.yml"
