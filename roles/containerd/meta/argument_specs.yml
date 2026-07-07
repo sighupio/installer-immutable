@@ -1,0 +1,104 @@
+---
+argument_specs:
+  main:
+    short_description: Install and configure containerd for the immutable cluster.
+    description: >-
+      Renders /etc/containerd/config.toml, systemd http-proxy drop-in and per-registry
+      certs.d/hosts.toml, pinning the sandbox (pause) image and registry auth/mirrors.
+    options:
+      kubernetes_image_registry:
+        type: str
+        required: false
+        default: "registry.sighup.io/fury/on-premises"
+        description: >-
+          Fallback image registry used to derive the sandbox image; the user's
+          spec.kubernetes.advanced.registry from the furyctl inventory overrides it.
+      containerd_sandbox_image:
+        type: str
+        required: false
+        default: "{{ kubernetes_image_registry }}/pause:{{ containerd_sandbox_tag }}"
+        description: >-
+          Pinned sandbox (pause) image written unconditionally into config.toml;
+          defaults to registry + tag so a custom registry redirects it.
+      containerd_sandbox_tag:
+        type: str
+        required: true
+        description: >-
+          Tag for the sandbox (pause) image; has no default in the role and is
+          supplied externally (furyctl inventory / immutable.yaml).
+      containerd_cfg_dir:
+        type: path
+        required: false
+        default: "/etc/containerd"
+        description: Config directory for config.toml and the certs.d registry hosts tree.
+      containerd_systemd_dir:
+        type: path
+        required: false
+        default: "/etc/systemd/system/containerd.service.d"
+        description: Destination directory for the containerd http-proxy.conf systemd drop-in.
+      containerd_storage_dir:
+        type: path
+        required: false
+        default: "/var/lib/containerd"
+        description: Persistent root directory written as root in config.toml.
+      containerd_state_dir:
+        type: path
+        required: false
+        default: "/run/containerd"
+        description: Runtime state directory written as state in config.toml.
+      containerd_oom_score:
+        type: int
+        required: false
+        default: 0
+        description: oom_score value set in config.toml.
+      containerd_grpc_max_recv_message_size:
+        type: int
+        required: false
+        default: 16777216
+        description: gRPC max_recv_message_size set in config.toml.
+      containerd_grpc_max_send_message_size:
+        type: int
+        required: false
+        default: 16777216
+        description: gRPC max_send_message_size set in config.toml.
+      containerd_debug_level:
+        type: str
+        required: false
+        default: "info"
+        description: Debug log level set in config.toml.
+      containerd_metrics_address:
+        type: str
+        required: false
+        default: ""
+        description: Metrics listen address in config.toml; empty disables the metrics endpoint.
+      containerd_metrics_grpc_histogram:
+        type: bool
+        required: false
+        default: false
+        description: Enable gRPC histogram metrics in config.toml.
+      containerd_max_container_log_line_size:
+        type: int
+        required: false
+        default: 16384
+        description: Runtime max_container_log_line_size set in config.toml.
+      containerd_device_ownership_from_security_context:
+        type: bool
+        required: false
+        default: false
+        description: Runtime device_ownership_from_security_context flag in config.toml.
+      containerd_registry_configs:
+        type: list
+        required: false
+        default: []
+        description: >-
+          Per-registry auth and mirror entries iterated to create certs.d dirs and
+          render hosts.toml; each item has registry, username, password,
+          insecure_skip_verify and mirror_endpoint.
+      upgrade:
+        type: bool
+        required: false
+        default: false
+        description: >-
+          Caller-passed run toggle. When true, stage the containerd sysext during
+          upgrade and skip the in-band restart and CRI-ready wait; the reboot applies
+          the new binary and config together.
