@@ -1,0 +1,121 @@
+---
+argument_specs:
+  main:
+    short_description: Join a node to the cluster as a kubelet worker.
+    description: >-
+      Renders the kubeadm join config and the KubeletConfiguration, then runs
+      kubeadm join / upgrade to register the node as a worker. All options are
+      optional with defaults; join secrets (bootstrap token, CA hash) are empty
+      by default and must be supplied via hostvars for a working join.
+    options:
+      kubeadm_config_file:
+        type: path
+        required: false
+        default: /etc/kubernetes/kubeadm.yml
+        description: Destination path for the rendered kubeadm config, used by kubeadm config validate and kubeadm join --config.
+      kubelet_config_path:
+        type: path
+        required: false
+        default: /var/lib/kubelet/kubelet-config
+        description: Path to the kubelet-config object; also the patches dir passed to kubeadm upgrade node phase kubelet-config --patches.
+      kubernetes_control_plane_address:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: apiServerEndpoint in the kubeadm join discovery bootstrapToken. Defaults to the node fqdn fact.
+      kubernetes_bootstrap_token:
+        type: str
+        required: false
+        default: ""
+        description: Discovery bootstrap token for the kubeadm join. Empty by default; must be supplied externally for a working join.
+      kubernetes_ca_hash:
+        type: str
+        required: false
+        default: ""
+        description: CA cert hash (caCertHashes) for the kubeadm join discovery. Empty by default; must be supplied externally for a working join.
+      kubernetes_cloud_provider:
+        type: str
+        required: false
+        default: ""
+        description: Value for the kubelet cloud-provider extra arg rendered in the kubeadm config.
+      kubernetes_hostname:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: nodeRegistration.name for the kubeadm join. Defaults to the node fqdn fact.
+      kubernetes_role:
+        type: str
+        required: false
+        default: "worker"
+        description: Value of the node.kubernetes.io/role node label applied at join.
+      kubernetes_taints:
+        type: list
+        required: false
+        default: []
+        description: nodeRegistration.taints for the kubeadm join; rendered only when the list is non-empty.
+      kubelet_config_cgroup_driver:
+        type: str
+        required: false
+        default: "systemd"
+        description: cgroupDriver in the KubeletConfiguration.
+      kubelet_config_streaming_connection_idle_timeout:
+        type: str
+        required: false
+        default: "5m"
+        description: streamingConnectionIdleTimeout in the KubeletConfiguration.
+      kubelet_config_read_only_port:
+        type: int
+        required: false
+        default: 0
+        description: readOnlyPort in the KubeletConfiguration; 0 disables the read-only port.
+      kubelet_config_server_tls_bootstrap:
+        type: bool
+        required: false
+        default: true
+        description: serverTLSBootstrap in the KubeletConfiguration.
+      kubelet_config_pod_pids_limit:
+        type: int
+        required: false
+        default: 4096
+        description: podPidsLimit in the KubeletConfiguration.
+      kubelet_config_static_pod_path:
+        type: str
+        required: false
+        default: ""
+        description: staticPodPath in the KubeletConfiguration; empty disables static pod manifests on workers and skips the mkdir.
+      kubelet_tls_cipher_suites:
+        type: list
+        required: false
+        default:
+          - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        description: tlsCipherSuites allowed by the kubelet, rendered into the KubeletConfiguration.
+      upgrade:
+        type: bool
+        required: false
+        default: false
+        description: >-
+          Caller-passed flag gating the worker upgrade block (sysext align, os-upgrade reboot, upgrade.yml)
+          and the skip of the Reconfigure Kubelet step. Read as upgrade | default(false) | bool.
+      kubectl_bin:
+        type: path
+        required: false
+        description: >-
+          Path to the kubectl binary used on the controller (delegate_to localhost) to read the worker's
+          current Kubernetes version for the upgrade step-delta check. Cluster-global var from inventory.
+      kubernetes_kubeconfig_path:
+        type: path
+        required: false
+        description: >-
+          Directory path (with trailing slash) prepended to super-admin.conf for the --kubeconfig used in the
+          upgrade skew check. Cluster-global var from inventory.
+      kubernetes_version:
+        type: str
+        required: false
+        description: >-
+          Target Kubernetes version asserted against the worker's current version in the upgrade one-minor-per-step
+          check. Cluster-global var from inventory.
