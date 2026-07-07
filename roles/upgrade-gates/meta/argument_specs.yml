@@ -1,12 +1,15 @@
 ---
 argument_specs:
-  fetch_admin_conf:
+  # Entry-point keys carry the .yml suffix to match how the distribution upgrade
+  # playbooks invoke them (include_role tasks_from: <name>.yml). ansible-core does
+  # not strip the extension when matching the arg spec, so the key must be exact.
+  fetch_admin_conf.yml:
     short_description: Fetch super-admin.conf from a control-plane node.
     description: >-
       Fetches /etc/kubernetes/super-admin.conf from the first control_plane host for the
       controller-side kubectl gates. Consumes only the inventory group; no role arguments.
     options: {}
-  infra_preflight:
+  infra_preflight.yml:
     short_description: Pre-drain infrastructure preflight gate.
     description: >-
       Asserts enough free disk to stage the sysext, each target .raw is reachable, and both
@@ -35,7 +38,7 @@ argument_specs:
         description: >-
           Rendered node architecture; consumed only inside the sysext_arch default expression,
           which supplies its own fallback.
-  sanity:
+  sanity.yml:
     short_description: Post-upgrade sanity gate.
     description: >-
       Asserts the node runs the target kubelet/kubeadm/kubectl and containerd, the kubernetes
@@ -66,7 +69,7 @@ argument_specs:
         description: >-
           Caller-injected map of sysext upgrade targets; only sysext_targets['containerd'].version
           is read, and its clause is skipped when absent.
-  cluster_health_gate:
+  cluster_health_gate.yml:
     short_description: Pre-upgrade cluster-health gate.
     description: >-
       Run once before any node is touched: asserts the API server is reachable and all nodes

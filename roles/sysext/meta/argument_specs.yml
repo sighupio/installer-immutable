@@ -1,6 +1,9 @@
 ---
 argument_specs:
-  align:
+  # Entry-point key carries the .yml suffix to match how it is invoked
+  # (include_role tasks_from: align.yml). ansible-core does not strip the
+  # extension when matching the arg spec, so the key must be exact.
+  align.yml:
     short_description: Align a subset of system extensions to their target .raw versions.
     description: >-
       Downloads and activates the target .raw for each selected sysext component, tracking which

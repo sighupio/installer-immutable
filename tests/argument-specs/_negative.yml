@@ -9,8 +9,8 @@
           {{ (lookup('file', repo ~ '/roles/' ~ m.role ~ '/meta/argument_specs.yml')
               | from_yaml).argument_specs[m.entry].options | default({}) }}
         provided_arguments: >-
-          {{ lookup('file', playbook_dir ~ '/fixtures/' ~ m.role ~ '/' ~ m.entry
-              ~ '.negative.yml') | from_yaml }}
+          {{ lookup('file', playbook_dir ~ '/fixtures/' ~ m.role ~ '/'
+              ~ (m.entry | replace('.yml', '')) ~ '.negative.yml') | from_yaml }}
     - name: "Negative {{ m.role }}/{{ m.entry }} unexpectedly passed"
       ansible.builtin.fail:
         msg: "Missing required var was NOT caught for {{ m.role }}/{{ m.entry }}"

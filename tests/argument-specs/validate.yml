@@ -41,9 +41,11 @@
           only-in-manifest={{ manifest_keys | difference(declared_keys) }}
         success_msg: "{{ manifest_keys | length }} declared entry-points, all in manifest."
 
+    # Fixture filenames drop the entry's .yml suffix (spec keys keep it to match
+    # the distribution tasks_from: <name>.yml callers; see the role specs).
     - name: Coverage - a positive fixture exists for every entry-point
       ansible.builtin.stat:
-        path: "{{ playbook_dir }}/fixtures/{{ item.role }}/{{ item.entry }}.positive.yml"
+        path: "{{ playbook_dir }}/fixtures/{{ item.role }}/{{ item.entry | replace('.yml', '') }}.positive.yml"
       register: posfix
       loop: "{{ manifest }}"
       loop_control:
@@ -65,8 +67,8 @@
           {{ (lookup('file', repo ~ '/roles/' ~ item.role ~ '/meta/argument_specs.yml')
               | from_yaml).argument_specs[item.entry].options | default({}) }}
         provided_arguments: >-
-          {{ lookup('file', playbook_dir ~ '/fixtures/' ~ item.role ~ '/' ~ item.entry
-              ~ '.positive.yml') | from_yaml }}
+          {{ lookup('file', playbook_dir ~ '/fixtures/' ~ item.role ~ '/'
+              ~ (item.entry | replace('.yml', '')) ~ '.positive.yml') | from_yaml }}
       loop: "{{ manifest }}"
       loop_control:
         loop_var: item
@@ -74,7 +76,7 @@
 
     - name: Coverage - a negative fixture exists for every entry-point with a required var
       ansible.builtin.stat:
-        path: "{{ playbook_dir }}/fixtures/{{ item.role }}/{{ item.entry }}.negative.yml"
+        path: "{{ playbook_dir }}/fixtures/{{ item.role }}/{{ item.entry | replace('.yml', '') }}.negative.yml"
       register: negfix
       loop: "{{ manifest | rejectattr('required', 'equalto', []) | list }}"
       loop_control:
