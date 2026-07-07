@@ -8,10 +8,10 @@ argument_specs:
     options:
       kubernetes_image_registry:
         type: str
-        required: false
-        default: "registry.sighup.io/fury/on-premises"
+        required: true
         description: >-
-          Fallback image registry used to derive the sandbox image; the user's
+          Image registry used to derive the sandbox image; furyctl always renders it from
+          immutable.yaml (or the user's advanced.registry). Fail fast if absent. The user's
           spec.kubernetes.advanced.registry from the furyctl inventory overrides it.
       containerd_sandbox_image:
         type: str

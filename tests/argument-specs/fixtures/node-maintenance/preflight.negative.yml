@@ -1,0 +1,8 @@
+---
+# Negative fixture for node-maintenance/preflight: omits the required kubernetes_version.
+# MUST fail validate_argument_spec.
+kubectl_bin: /usr/local/bin/kubectl
+kubernetes_kubeconfig_path: ./
+os_update_reboot: true
+os_update_target_version: 4593.2.3
+upgrade: true

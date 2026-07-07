@@ -31,7 +31,7 @@ argument_specs:
         description: Controller-side kubeconfig directory, concatenated with super-admin.conf for --kubeconfig.
       kubernetes_version:
         type: str
-        required: false
+        required: true
         description: Target Kubernetes version; caller-passed when upgrading a worker, compared against the node's kubelet version.
       os_update_apply:
         type: bool
@@ -45,7 +45,7 @@ argument_specs:
         description: Layer signal, true when the OS update reboots; second operand of the OS-reboot-pending decision.
       os_update_target_version:
         type: str
-        required: false
+        required: true
         description: Target Flatcar version; caller-passed, compared against distribution_version for the in-band OS-reboot decision.
       sysext_changed_components:
         type: list

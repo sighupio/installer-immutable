@@ -5,6 +5,7 @@
   entry: main
   required:
     - containerd_sandbox_tag
+    - kubernetes_image_registry
 - role: etcd
   entry: main
   required: []
@@ -27,12 +28,17 @@
   required:
     - kubernetes_version
     - kubelet_csr_approver_tag
+    - kubernetes_image_registry
+    - coredns_image_prefix
 - role: kube-worker
   entry: main
-  required: []
+  required:
+    - kubernetes_version
 - role: node-maintenance
   entry: preflight.yml
-  required: []
+  required:
+    - kubernetes_version
+    - os_update_target_version
 - role: node-maintenance
   entry: drain.yml
   required: []

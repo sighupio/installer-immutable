@@ -104,18 +104,20 @@ argument_specs:
       kubectl_bin:
         type: path
         required: false
+        default: kubectl
         description: >-
           Path to the kubectl binary used on the controller (delegate_to localhost) to read the worker's
           current Kubernetes version for the upgrade step-delta check. Cluster-global var from inventory.
       kubernetes_kubeconfig_path:
         type: path
         required: false
+        default: ./
         description: >-
           Directory path (with trailing slash) prepended to super-admin.conf for the --kubeconfig used in the
           upgrade skew check. Cluster-global var from inventory.
       kubernetes_version:
         type: str
-        required: false
+        required: true
         description: >-
           Target Kubernetes version asserted against the worker's current version in the upgrade one-minor-per-step
           check. Cluster-global var from inventory.

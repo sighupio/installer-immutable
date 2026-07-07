@@ -99,14 +99,12 @@ argument_specs:
         description: Cluster name rendered into kubeadm.yml.j2 clusterName.
       kubernetes_image_registry:
         type: str
-        required: false
-        default: "registry.sighup.io/fury/on-premises"
-        description: Image repository for kubeadm imageRepository/dns and the kubelet-csr-approver image.
+        required: true
+        description: Image repository for kubeadm imageRepository/dns and the kubelet-csr-approver image; furyctl always renders it from immutable.yaml (or the user's advanced.registry).
       coredns_image_prefix:
         type: str
-        required: false
-        default: "/coredns"
-        description: CoreDNS image path suffix appended to dns.imageRepository (rendered when non-empty).
+        required: true
+        description: CoreDNS image path suffix appended to dns.imageRepository; furyctl always renders it from immutable.yaml.
       kubernetes_pod_cidr:
         type: str
         required: false
