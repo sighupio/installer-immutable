@@ -1,0 +1,99 @@
+---
+argument_specs:
+  preflight:
+    short_description: Decide whether this run needs a drain window.
+    description: >-
+      Reads the upgrade/OS-reboot/sysext signals and sets node_upgrade_drain_required so every disruptive layer shares
+      one cordon/drain -> uncordon window.
+    options:
+      upgrade:
+        type: bool
+        required: false
+        default: false
+        description: Layer signal, true when this run is an upgrade; set at play level by 55/56.
+      kubectl_bin:
+        type: str
+        required: false
+        default: kubectl
+        description: Controller-side kubectl binary or path for the delegated node version read.
+      kubernetes_hostname:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: Kubernetes node name for the kubectl get node call; default resolves via the fqdn fact.
+      kubernetes_kubeconfig_path:
+        type: path
+        required: false
+        default: "./"
+        description: Controller-side kubeconfig directory, concatenated with super-admin.conf for --kubeconfig.
+      kubernetes_version:
+        type: str
+        required: false
+        description: Target Kubernetes version; caller-passed when upgrading a worker, compared against the node's kubelet version.
+      os_update_apply:
+        type: bool
+        required: false
+        default: false
+        description: Layer signal, true when an OS update applies; first operand of the OS-reboot-pending decision.
+      os_update_reboot:
+        type: bool
+        required: false
+        default: false
+        description: Layer signal, true when the OS update reboots; second operand of the OS-reboot-pending decision.
+      os_update_target_version:
+        type: str
+        required: false
+        description: Target Flatcar version; caller-passed, compared against distribution_version for the in-band OS-reboot decision.
+      sysext_changed_components:
+        type: list
+        required: false
+        default: []
+        description: Sysext components changed this run; empty at preflight time, feeds the drain-required decision.
+  drain:
+    short_description: Open the maintenance window by draining the node.
+    description: Cordons and drains the node to evict workloads before the disruptive layers run.
+    options:
+      kubectl_bin:
+        type: str
+        required: false
+        default: kubectl
+        description: Controller-side kubectl binary or path for the delegated drain command.
+      kubernetes_hostname:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: Kubernetes node name passed to kubectl drain; default resolves via the fqdn fact.
+      kubernetes_kubeconfig_path:
+        type: path
+        required: false
+        default: "./"
+        description: Controller-side kubeconfig directory, concatenated with super-admin.conf for --kubeconfig.
+  uncordon:
+    short_description: Close the maintenance window and wait for pods to settle.
+    description: Uncordons the node after the disruptive layers finish, then waits for its pods to reach Running.
+    options:
+      kubectl_bin:
+        type: str
+        required: false
+        default: kubectl
+        description: Controller-side kubectl binary or path for the delegated uncordon and pods-settled calls.
+      kubernetes_hostname:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: Kubernetes node name for uncordon and the pods --field-selector; default resolves via the fqdn fact.
+      kubernetes_kubeconfig_path:
+        type: path
+        required: false
+        default: "./"
+        description: Controller-side kubeconfig directory, concatenated with super-admin.conf for --kubeconfig.
+      skip_pods_running_check:
+        type: bool
+        required: false
+        default: false
+        description: When true, skip the post-uncordon wait for this node's pods to settle.
+      pods_running_retries:
+        type: int
+        required: false
+        default: 20
+        description: Retry count for the pods-settled until-loop after uncordon.
