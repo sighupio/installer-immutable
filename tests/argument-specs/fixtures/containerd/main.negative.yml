@@ -1,0 +1,4 @@
+---
+# Negative fixture for containerd/main: omits required 'containerd_sandbox_tag'.
+# MUST fail validate_argument_spec (asserted via block/rescue).
+upgrade: true

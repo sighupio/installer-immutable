@@ -1,0 +1,8 @@
+---
+# Negative fixture for sysext/align: omits required 'sysext_targets'.
+# MUST fail validate_argument_spec (asserted via block/rescue).
+node_arch: x86-64
+sysext_arch: x86-64
+sysext_components:
+  - containerd
+sysext_refresh_after: true

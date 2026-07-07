@@ -1,0 +1,5 @@
+---
+# Negative fixture for upgrade-gates/cluster_health_gate: omits required 'kubernetes_version'.
+# MUST fail validate_argument_spec (asserted via block/rescue).
+kubectl_bin: /home/smerlos/dev-env/fury-devenv/.furyctl/bin/kubectl/1.35.5/kubectl
+kubernetes_kubeconfig_path: ./
