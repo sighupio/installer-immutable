@@ -1,0 +1,114 @@
+---
+argument_specs:
+  main:
+    short_description: Configure, start and (on upgrade) align a member of the etcd cluster.
+    description: >-
+      Renders etcd.env and the etcdctl profile, restarts/enables etcd, and on upgrade stages the etcd
+      sysext, renews certs and (for off-control-plane etcd) distributes client certs.
+    options:
+      etcd_config_dir:
+        type: path
+        required: false
+        default: /etc/etcd
+        description: Destination directory for etcd.env and kubeadm-etcd.yml.
+      etcd_certs_dir:
+        type: path
+        required: false
+        default: /etc/etcd/pki
+        description: Directory holding etcd TLS material, referenced by etcd.env and etcdctl.sh.
+      etcd_name:
+        type: str
+        required: false
+        default: "{{ inventory_hostname }}"
+        description: etcd member name (ETCD_NAME); defaults to the inventory hostname.
+      etcd_data_dir:
+        type: path
+        required: false
+        default: /var/lib/etcd
+        description: etcd data directory (ETCD_DATA_DIR).
+      etcd_initial_cluster:
+        type: str
+        required: false
+        default: ""
+        description: Initial cluster peer list; must be defined in inventory/group_vars or the playbook.
+      etcd_initial_cluster_state:
+        type: str
+        required: false
+        default: "new"
+        description: Initial cluster state (ETCD_INITIAL_CLUSTER_STATE), typically new or existing.
+      etcd_address:
+        type: str
+        required: false
+        default: "{{ ansible_facts['default_ipv4'].address }}"
+        description: Node IP etcd binds/advertises on; defaults to the gathered default_ipv4 address.
+      etcd_advertise_client_urls:
+        type: str
+        required: false
+        default: "https://{{ ansible_facts['default_ipv4'].address }}:2379"
+        description: Client URL etcd advertises to peers (ETCD_ADVERTISE_CLIENT_URLS).
+      etcd_listen_client_urls:
+        type: str
+        required: false
+        default: "https://{{ ansible_facts['default_ipv4'].address }}:2379,https://127.0.0.1:2379"
+        description: Client URLs etcd listens on (ETCD_LISTEN_CLIENT_URLS).
+      etcd_metrics_address:
+        type: str
+        required: false
+        default: "{{ ansible_facts['default_ipv4'].address }}"
+        description: Host part of the etcd metrics listen URL (ETCD_LISTEN_METRICS_URLS).
+      etcd_metrics_port:
+        type: int
+        required: false
+        default: 2378
+        description: Port for the etcd metrics listen URL.
+      etcd_endpoints:
+        type: list
+        required: false
+        default: []
+        description: etcdctl endpoint list (ETCDCTL_ENDPOINTS), joined with commas in etcdctl.sh.
+      etcd_upgrade:
+        type: bool
+        required: false
+        default: false
+        description: When true, skips the in-band etcd restart and runs the sysext align and certs renewal.
+      etcd_on_control_plane:
+        type: bool
+        required: false
+        default: true
+        description: Whether etcd runs on the control plane; when false the certs distribution tasks run.
+      etcd_pki_local_dir:
+        type: path
+        required: false
+        default: "{{ playbook_dir }}/../pki/etcd"
+        description: Local path to the furyctl-generated etcd CA copied to the node.
+      etcd_certs:
+        type: list
+        required: false
+        default:
+          - etcd/ca.crt
+          - apiserver-etcd-client.crt
+          - apiserver-etcd-client.key
+        description: Certificate filenames fetched from the etcd node and distributed to the etcd group.
+      etcd_ansible_group_name:
+        type: str
+        required: false
+        default: "control_plane"
+        description: Inventory group holding the etcd nodes; targets certificate distribution.
+      os_update_reboot:
+        type: bool
+        required: false
+        description: >-
+          Caller-supplied flag from the os-update role; when true the renewed-cert etcd restart runs for a
+          node that will not reboot. Read as os_update_reboot | default(false) | bool; no role default.
+  pre_reboot:
+    short_description: Assert etcd cluster health and snapshot the DB before an OS-update reboot.
+    description: >-
+      Requires the whole etcd cluster healthy, ensures the backup directory exists and takes a live
+      snapshot of the local member so the node is never rebooted without a backup.
+    options: {}
+  post_reboot:
+    short_description: Wait for etcd to rejoin and report cluster health after the reboot.
+    description: >-
+      Polls etcd endpoint health until the whole cluster is healthy again, then moves the confirmed-safe
+      pre-reboot snapshot out of the backup directory.
+    options: {}
