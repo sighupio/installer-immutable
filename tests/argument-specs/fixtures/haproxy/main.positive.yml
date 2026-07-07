@@ -1,0 +1,6 @@
+---
+# Positive fixture for haproxy/main: declared-option projection of the
+# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+haproxy_container_image: registry.sighup.io/fury/on-premises/haproxy
+haproxy_container_tag: 3.2.9
+kubernetes_local_pki_dir: /home/smerlos/dev-env/fury-devenv/pki/master

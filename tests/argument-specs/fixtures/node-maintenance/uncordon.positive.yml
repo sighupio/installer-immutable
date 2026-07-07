@@ -1,0 +1,5 @@
+---
+# Positive fixture for node-maintenance/uncordon: declared-option projection of the
+# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+kubectl_bin: /home/smerlos/dev-env/fury-devenv/.furyctl/bin/kubectl/1.35.5/kubectl
+kubernetes_kubeconfig_path: ./

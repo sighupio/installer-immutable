@@ -1,0 +1,4 @@
+---
+# Positive fixture for os-upgrade/os_stage: declared-option projection of the
+# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+os_update_target_version: 4593.2.3

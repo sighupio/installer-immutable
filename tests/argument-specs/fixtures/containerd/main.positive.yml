@@ -1,0 +1,5 @@
+---
+# Positive fixture for containerd/main: declared-option projection of the
+# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+containerd_sandbox_tag: 3.10.1
+upgrade: true

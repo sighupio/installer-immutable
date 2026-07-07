@@ -1,0 +1,5 @@
+---
+# Positive fixture for etcd/main: declared-option projection of the
+# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+etcd_upgrade: true
+os_update_reboot: true

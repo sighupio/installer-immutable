@@ -1,0 +1,4 @@
+---
+# Positive fixture for sysctl/main: declared-option projection of the
+# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+{}
