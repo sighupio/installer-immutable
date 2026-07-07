@@ -1,0 +1,88 @@
+---
+argument_specs:
+  fetch_admin_conf:
+    short_description: Fetch super-admin.conf from a control-plane node.
+    description: >-
+      Fetches /etc/kubernetes/super-admin.conf from the first control_plane host for the
+      controller-side kubectl gates. Consumes only the inventory group; no role arguments.
+    options: {}
+  infra_preflight:
+    short_description: Pre-drain infrastructure preflight gate.
+    description: >-
+      Asserts enough free disk to stage the sysext, each target .raw is reachable, and both
+      A/B OS partitions exist for rollback, before any node is drained.
+    options:
+      node_upgrade_min_free_bytes:
+        type: int
+        required: false
+        default: 1073741824
+        description: Minimum free bytes on / required to stage the sysext .raw.
+      sysext_targets:
+        type: dict
+        required: false
+        description: >-
+          Caller-injected map of sysext upgrade targets; HEAD-checked per arch URL only when
+          defined. Undefined skips the reachability loop.
+      sysext_arch:
+        type: str
+        required: false
+        default: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
+        description: sysext architecture used to index the per-target artifact URL.
+        choices: ["x86-64", "arm64"]
+      node_arch:
+        type: str
+        required: false
+        description: >-
+          Rendered node architecture; consumed only inside the sysext_arch default expression,
+          which supplies its own fallback.
+  sanity:
+    short_description: Post-upgrade sanity gate.
+    description: >-
+      Asserts the node runs the target kubelet/kubeadm/kubectl and containerd, the kubernetes
+      sysext overlay is merged, and the node reports Ready.
+    options:
+      kubernetes_version:
+        type: str
+        required: true
+        description: Target Kubernetes version the node binaries must match (furyctl-injected).
+      kubectl_bin:
+        type: str
+        required: false
+        default: kubectl
+        description: kubectl binary for the delegated node Ready wait.
+      kubernetes_kubeconfig_path:
+        type: path
+        required: false
+        default: "./"
+        description: Directory holding super-admin.conf for the kubectl wait --kubeconfig.
+      kubernetes_hostname:
+        type: str
+        required: false
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: Kubernetes node name targeted by kubectl wait.
+      sysext_targets:
+        type: dict
+        required: false
+        description: >-
+          Caller-injected map of sysext upgrade targets; only sysext_targets['containerd'].version
+          is read, and its clause is skipped when absent.
+  cluster_health_gate:
+    short_description: Pre-upgrade cluster-health gate.
+    description: >-
+      Run once before any node is touched: asserts the API server is reachable and all nodes
+      Ready, the cluster is uniform or resumable toward the target, and etcd is healthy.
+    options:
+      kubernetes_version:
+        type: str
+        required: true
+        description: Target Kubernetes version used to judge a resumable partial upgrade.
+      kubectl_bin:
+        type: str
+        required: false
+        default: kubectl
+        description: Controller-side kubectl for the delegated get-nodes checks.
+      kubernetes_kubeconfig_path:
+        type: path
+        required: false
+        default: "./"
+        description: Directory holding super-admin.conf for the kubectl --kubeconfig.
