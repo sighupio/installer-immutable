@@ -65,7 +65,7 @@
       ansible.builtin.validate_argument_spec:
         argument_spec: >-
           {{ (lookup('file', repo ~ '/roles/' ~ item.role ~ '/meta/argument_specs.yml')
-              | from_yaml).argument_specs[item.entry].options | default({}) }}
+              | from_yaml).argument_specs[item.entry].options }}
         provided_arguments: >-
           {{ lookup('file', playbook_dir ~ '/fixtures/' ~ item.role ~ '/'
               ~ (item.entry | replace('.yml', '')) ~ '.positive.yml') | from_yaml }}

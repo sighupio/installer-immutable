@@ -1,5 +1,4 @@
 ---
-# Positive fixture for node-maintenance/drain: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for node-maintenance/drain: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 kubectl_bin: /usr/local/bin/kubectl
 kubernetes_kubeconfig_path: ./

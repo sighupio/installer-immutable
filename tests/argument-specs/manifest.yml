@@ -1,6 +1,6 @@
 ---
-# Generated (Fase 4) from contract-table.json. role/entry + required options.
-# Coverage source of truth: validate.yml asserts specs match this and fixtures exist.
+# role -> entry-point -> its required options.
+# Coverage source of truth: validate.yml asserts the specs match this and that fixtures exist.
 - role: containerd
   entry: main
   required:

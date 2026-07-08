@@ -1,6 +1,5 @@
 ---
-# Positive fixture for etcd/main: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for etcd/main: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 etcd_endpoints:
   - https://10.0.0.1:2379
   - https://10.0.0.2:2379

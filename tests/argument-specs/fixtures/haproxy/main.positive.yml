@@ -1,6 +1,5 @@
 ---
-# Positive fixture for haproxy/main: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for haproxy/main: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 haproxy_configuration: |
   frontend k8s-api-server
     bind *:6443

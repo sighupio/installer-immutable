@@ -15,7 +15,7 @@ mise run test:argument-specs
   match `manifest.yml`, and every entry-point has a positive fixture. Adding a spec
   entry without a fixture fails the harness.
 - **Positive** — each entry-point's `fixtures/<role>/<entry>.positive.yml` (the
-  declared-option projection of the furyctl-rendered outdir values) MUST pass validation.
+  values a real furyctl run provides for that entry-point) MUST pass validation.
 - **Negative** — for entry-points with a `required: true` option,
   `fixtures/<role>/<entry>.negative.yml` omits one required var and MUST fail validation
   (asserted via `block`/`rescue`).
@@ -24,7 +24,7 @@ mise run test:argument-specs
 
 - `validate.yml` — the harness playbook.
 - `_negative.yml` — one negative case (included per entry-point with required vars).
-- `manifest.yml` — generated `role → entry → required[]` map (coverage source of truth).
-- `fixtures/<role>/<entry>.{positive,negative}.yml` — derived from the rendered outdir.
+- `manifest.yml` — `role → entry → required[]` map (coverage source of truth).
+- `fixtures/<role>/<entry>.{positive,negative}.yml` — the variables a real furyctl run provides.
 
-Fixtures are regenerated from `contract-table.json` + a real furyctl outdir, not hand-authored.
+Fixtures mirror the values a real furyctl run provides, not hand-authored ones.

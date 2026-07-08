@@ -1,4 +1,3 @@
 ---
-# Positive fixture for keepalived/main: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for keepalived/main: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 keepalived_ip: 10.0.0.254

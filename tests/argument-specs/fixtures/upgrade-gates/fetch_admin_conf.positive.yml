@@ -1,4 +1,3 @@
 ---
-# Positive fixture for upgrade-gates/fetch_admin_conf: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for upgrade-gates/fetch_admin_conf: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 {}

@@ -1,6 +1,5 @@
 ---
-# Positive fixture for upgrade-gates/infra_preflight: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for upgrade-gates/infra_preflight: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 node_arch: x86-64
 sysext_arch: x86-64
 sysext_targets:

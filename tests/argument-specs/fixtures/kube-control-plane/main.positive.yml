@@ -1,6 +1,5 @@
 ---
-# Positive fixture for kube-control-plane/main: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for kube-control-plane/main: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 coredns_image_prefix: /coredns
 kubelet_csr_approver_tag: v1.0
 kubernetes_cluster_name: example-cluster

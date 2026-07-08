@@ -1,6 +1,5 @@
 ---
-# Positive fixture for upgrade-gates/cluster_health_gate: declared-option projection of the
-# furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
+# Positive fixture for upgrade-gates/cluster_health_gate: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 kubectl_bin: /usr/local/bin/kubectl
 kubernetes_kubeconfig_path: ./
 kubernetes_version: 1.35.5
