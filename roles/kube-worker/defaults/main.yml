@@ -3,7 +3,6 @@
 kubeadm_config_file: /etc/kubernetes/kubeadm.yml
 # kubelet-config is the actual name of the object
 kubelet_config_path: /var/lib/kubelet/kubelet-config
-kubernetes_control_plane_address: "{{ ansible_facts['fqdn'] }}"
 kubernetes_bootstrap_token: ""
 kubernetes_ca_hash: ""
 # cloud-provider flag removed from kube-apiserver in K8s v1.33+

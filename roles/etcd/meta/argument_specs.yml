@@ -34,6 +34,7 @@ argument_specs:
         type: str
         required: false
         default: "new"
+        choices: ["new", "existing"]
         description: Initial cluster state (ETCD_INITIAL_CLUSTER_STATE), typically new or existing.
       etcd_address:
         type: str
@@ -98,13 +99,16 @@ argument_specs:
         description: >-
           Caller-supplied flag from the os-update role; when true the renewed-cert etcd restart runs for a
           node that will not reboot. Read as os_update_reboot | default(false) | bool; no role default.
-  pre_reboot:
+  # Entry-point keys carry the .yml suffix to match how the distribution upgrade
+  # playbooks invoke them (include_role tasks_from: <name>.yml). ansible-core does
+  # not strip the extension when matching the arg spec, so the key must be exact.
+  pre_reboot.yml:
     short_description: Assert etcd cluster health and snapshot the DB before an OS-update reboot.
     description: >-
       Requires the whole etcd cluster healthy, ensures the backup directory exists and takes a live
       snapshot of the local member so the node is never rebooted without a backup.
     options: {}
-  post_reboot:
+  post_reboot.yml:
     short_description: Wait for etcd to rejoin and report cluster health after the reboot.
     description: >-
       Polls etcd endpoint health until the whole cluster is healthy again, then moves the confirmed-safe

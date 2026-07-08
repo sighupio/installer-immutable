@@ -93,15 +93,18 @@ argument_specs:
         description: Cluster controlPlaneEndpoint rendered into kubeadm.yml.j2; furyctl always renders the VIP. Required because the fqdn fallback would misconfigure the endpoint in an HA cluster.
       kubernetes_cluster_name:
         type: str
-        required: true
+        required: false
+        default: "immutable-dev"
         description: Cluster name rendered into kubeadm.yml.j2 clusterName; furyctl always renders it from metadata.name.
       kubernetes_image_registry:
         type: str
-        required: true
+        required: false
+        default: "registry.sighup.io/fury/on-premises"
         description: Image repository for kubeadm imageRepository/dns and the kubelet-csr-approver image; furyctl always renders it from immutable.yaml (or the user's advanced.registry).
       coredns_image_prefix:
         type: str
-        required: true
+        required: false
+        default: "/coredns"
         description: CoreDNS image path suffix appended to dns.imageRepository; furyctl always renders it from immutable.yaml.
       kubernetes_pod_cidr:
         type: str
@@ -280,6 +283,7 @@ argument_specs:
         type: str
         required: false
         default: "systemd"
+        choices: ["systemd", "cgroupfs"]
         description: Kubelet cgroupDriver in KubeletConfiguration.
       kubernetes_taints:
         type: list

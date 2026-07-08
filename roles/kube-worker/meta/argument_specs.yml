@@ -56,6 +56,7 @@ argument_specs:
         type: str
         required: false
         default: "systemd"
+        choices: ["systemd", "cgroupfs"]
         description: cgroupDriver in the KubeletConfiguration.
       kubelet_config_streaming_connection_idle_timeout:
         type: str
@@ -101,7 +102,7 @@ argument_specs:
           Caller-passed flag gating the worker upgrade block (sysext align, os-upgrade reboot, upgrade.yml)
           and the skip of the Reconfigure Kubelet step. Read as upgrade | default(false) | bool.
       kubectl_bin:
-        type: path
+        type: str
         required: false
         default: kubectl
         description: >-

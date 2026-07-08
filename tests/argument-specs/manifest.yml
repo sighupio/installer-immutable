@@ -5,24 +5,22 @@
   entry: main
   required:
     - containerd_sandbox_tag
-    - kubernetes_image_registry
 - role: etcd
   entry: main
   required:
     - etcd_initial_cluster
     - etcd_endpoints
 - role: etcd
-  entry: pre_reboot
+  entry: pre_reboot.yml
   required: []
 - role: etcd
-  entry: post_reboot
+  entry: post_reboot.yml
   required: []
 - role: haproxy
   entry: main
   required:
     - haproxy_container_image
     - haproxy_container_tag
-    - haproxy_configuration
 - role: keepalived
   entry: main
   required: []
@@ -31,9 +29,6 @@
   required:
     - kubernetes_version
     - kubelet_csr_approver_tag
-    - kubernetes_image_registry
-    - coredns_image_prefix
-    - kubernetes_cluster_name
     - kubernetes_control_plane_address
 - role: kube-worker
   entry: main

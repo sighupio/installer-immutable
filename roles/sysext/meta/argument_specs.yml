@@ -42,6 +42,7 @@ argument_specs:
         description: >-
           System-extension architecture (x86-64/arm64) used as the key into each component's arch map;
           from the rendered node_arch with an architecture-fact fallback.
+        choices: ["x86-64", "arm64"]
       node_arch:
         type: str
         required: false

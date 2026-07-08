@@ -37,6 +37,7 @@ argument_specs:
         type: str
         required: false
         default: "off"
+        choices: ["off", "reboot", "etcd-lock", "best-effort"]
         description: >-
           update-engine reboot strategy (REBOOT_STRATEGY= in update.conf); kept "off" so reboot
           coordination stays external (e.g. KureD).
