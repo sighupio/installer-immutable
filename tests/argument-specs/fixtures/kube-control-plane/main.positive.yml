@@ -9,3 +9,4 @@ kubernetes_kubeconfig_path: ./
 kubernetes_local_pki_dir: /etc/kubernetes/pki
 kubernetes_version: 1.35.5
 upgrade: true
+kubernetes_control_plane_address: api.example.local:6443

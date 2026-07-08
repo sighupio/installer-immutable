@@ -89,9 +89,8 @@ argument_specs:
         description: Local API server advertise address; defaults to the default_ipv4 fact.
       kubernetes_control_plane_address:
         type: str
-        required: false
-        default: "{{ ansible_facts['fqdn'] }}"
-        description: Cluster controlPlaneEndpoint rendered into kubeadm.yml.j2.
+        required: true
+        description: Cluster controlPlaneEndpoint rendered into kubeadm.yml.j2; furyctl always renders the VIP. Required because the fqdn fallback would misconfigure the endpoint in an HA cluster.
       kubernetes_cluster_name:
         type: str
         required: true

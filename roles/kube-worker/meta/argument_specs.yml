@@ -20,9 +20,8 @@ argument_specs:
         description: Path to the kubelet-config object; also the patches dir passed to kubeadm upgrade node phase kubelet-config --patches.
       kubernetes_control_plane_address:
         type: str
-        required: false
-        default: "{{ ansible_facts['fqdn'] }}"
-        description: apiServerEndpoint in the kubeadm join discovery bootstrapToken. Defaults to the node fqdn fact.
+        required: true
+        description: apiServerEndpoint (VIP) in the kubeadm join discovery bootstrapToken; furyctl always renders it. Required because the fqdn fallback would point the worker at itself and break the join.
       kubernetes_bootstrap_token:
         type: str
         required: false

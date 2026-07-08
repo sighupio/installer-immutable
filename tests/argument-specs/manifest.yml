@@ -34,10 +34,12 @@
     - kubernetes_image_registry
     - coredns_image_prefix
     - kubernetes_cluster_name
+    - kubernetes_control_plane_address
 - role: kube-worker
   entry: main
   required:
     - kubernetes_version
+    - kubernetes_control_plane_address
 - role: node-maintenance
   entry: preflight.yml
   required:
