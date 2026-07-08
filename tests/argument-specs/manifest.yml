@@ -8,7 +8,9 @@
     - kubernetes_image_registry
 - role: etcd
   entry: main
-  required: []
+  required:
+    - etcd_initial_cluster
+    - etcd_endpoints
 - role: etcd
   entry: pre_reboot
   required: []
@@ -20,6 +22,7 @@
   required:
     - haproxy_container_image
     - haproxy_container_tag
+    - haproxy_configuration
 - role: keepalived
   entry: main
   required: []
@@ -30,6 +33,7 @@
     - kubelet_csr_approver_tag
     - kubernetes_image_registry
     - coredns_image_prefix
+    - kubernetes_cluster_name
 - role: kube-worker
   entry: main
   required:

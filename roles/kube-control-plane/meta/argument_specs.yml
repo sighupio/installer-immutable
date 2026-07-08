@@ -94,9 +94,8 @@ argument_specs:
         description: Cluster controlPlaneEndpoint rendered into kubeadm.yml.j2.
       kubernetes_cluster_name:
         type: str
-        required: false
-        default: "immutable-dev"
-        description: Cluster name rendered into kubeadm.yml.j2 clusterName.
+        required: true
+        description: Cluster name rendered into kubeadm.yml.j2 clusterName; furyctl always renders it from metadata.name.
       kubernetes_image_registry:
         type: str
         required: true

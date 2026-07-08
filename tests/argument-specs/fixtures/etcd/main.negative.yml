@@ -1,0 +1,7 @@
+---
+# Negative fixture for etcd/main: omits the required etcd_initial_cluster.
+# MUST fail validate_argument_spec.
+etcd_endpoints:
+  - https://10.0.0.1:2379
+etcd_upgrade: true
+os_update_reboot: true

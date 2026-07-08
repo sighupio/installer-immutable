@@ -28,9 +28,8 @@ argument_specs:
         description: etcd data directory (ETCD_DATA_DIR).
       etcd_initial_cluster:
         type: str
-        required: false
-        default: ""
-        description: Initial cluster peer list; must be defined in inventory/group_vars or the playbook.
+        required: true
+        description: Initial cluster peer list (ETCD_INITIAL_CLUSTER); furyctl always renders it. Empty would break etcd bootstrap, so it is required.
       etcd_initial_cluster_state:
         type: str
         required: false
@@ -63,9 +62,8 @@ argument_specs:
         description: Port for the etcd metrics listen URL.
       etcd_endpoints:
         type: list
-        required: false
-        default: []
-        description: etcdctl endpoint list (ETCDCTL_ENDPOINTS), joined with commas in etcdctl.sh.
+        required: true
+        description: etcdctl endpoint list (ETCDCTL_ENDPOINTS), joined with commas in etcdctl.sh; furyctl always renders it. Empty would break etcdctl, so it is required.
       etcd_upgrade:
         type: bool
         required: false

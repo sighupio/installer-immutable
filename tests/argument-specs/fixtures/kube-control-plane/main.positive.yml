@@ -3,6 +3,7 @@
 # furyctl-rendered outdir values (real). MUST pass validate_argument_spec.
 coredns_image_prefix: /coredns
 kubelet_csr_approver_tag: v1.0
+kubernetes_cluster_name: example-cluster
 kubernetes_image_registry: registry.example.io/fury
 kubernetes_kubeconfig_path: ./
 kubernetes_local_pki_dir: /etc/kubernetes/pki
