@@ -61,14 +61,27 @@
       loop_control:
         label: "{{ item.item.role }}/{{ item.item.entry }}"
 
-    - name: Positive - real caller variables MUST pass validation
-      ansible.builtin.validate_argument_spec:
-        argument_spec: >-
+    # Simulate a real role run: the role applies its defaults/main.yml values (filtered to the
+    # options the spec declares — validate_argument_spec rejects undeclared args), then the caller
+    # (fixture) supplies/overrides the rendered inventory values. Specs no longer carry defaults;
+    # the role default is the single source and this exercises it against the spec.
+    - name: Positive - role defaults + real caller variables MUST pass validation
+      vars:
+        spec_opts: >-
           {{ (lookup('file', repo ~ '/roles/' ~ item.role ~ '/meta/argument_specs.yml')
               | from_yaml).argument_specs[item.entry].options }}
-        provided_arguments: >-
+        role_defaults: >-
+          {{ (lookup('file', repo ~ '/roles/' ~ item.role ~ '/defaults/main.yml', errors='ignore')
+              or lookup('file', repo ~ '/roles/' ~ item.role ~ '/defaults/main.yaml', errors='ignore')
+              or '') | from_yaml | default({}, true) }}
+        fixture: >-
           {{ lookup('file', playbook_dir ~ '/fixtures/' ~ item.role ~ '/'
-              ~ (item.entry | replace('.yml', '')) ~ '.positive.yml') | from_yaml }}
+              ~ (item.entry | replace('.yml', '')) ~ '.positive.yml') | from_yaml | default({}, true) }}
+      ansible.builtin.validate_argument_spec:
+        argument_spec: "{{ spec_opts }}"
+        provided_arguments: >-
+          {{ (role_defaults | dict2items | selectattr('key', 'in', spec_opts.keys() | list) | items2dict)
+             | combine(fixture) }}
       loop: "{{ manifest }}"
       loop_control:
         loop_var: item
