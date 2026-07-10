@@ -24,21 +24,18 @@ argument_specs:
       sysext_refresh_after:
         type: bool
         required: false
-        default: false
         description: >-
           Caller opt-in for an in-band systemd-sysext refresh after staging; otherwise a staged
           daemon extension is recorded for boot-time activation.
       sysext_changed_components:
         type: list
         required: false
-        default: []
         description: >-
           Components whose .raw changed in this alignment; reset at start and read by the caller to
           decide daemon restarts.
       sysext_arch:
         type: str
         required: false
-        default: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
         description: >-
           System-extension architecture (x86-64/arm64) used as the key into each component's arch map;
           from the rendered node_arch with an architecture-fact fallback.
@@ -46,30 +43,27 @@ argument_specs:
       node_arch:
         type: str
         required: false
+        choices: ["x86-64", "arm64"]
         description: >-
           Per-node architecture override feeding the sysext_arch default expression; falls back to the
           architecture fact when unset.
       sysext_extensions_store:
         type: path
         required: false
-        default: /opt/extensions
         description: Directory holding downloaded .raw files, one subdirectory per component.
       sysext_active_dir:
         type: path
         required: false
-        default: /etc/extensions
         description: Directory of active sysext symlinks (<name>.raw) that systemd-sysext merges.
       sysext_verify_signature:
         type: bool
         required: false
-        default: false
         description: >-
           Verify the artifact signature over SHA256SUMS before activation; off by default because
           releases publish only SHA256SUMS today.
       sysext_signature_tool:
         type: str
         required: false
-        default: cosign
         description: Tool used to verify SHA256SUMS when signature verification is enabled.
         choices:
           - cosign
@@ -77,12 +71,10 @@ argument_specs:
       sysext_signature_key:
         type: str
         required: false
-        default: ""
         description: >-
           Key passed to the verification tool (cosign --key or gpg --keyring); required when
           sysext_verify_signature is enabled.
       sysext_signature_ext:
         type: str
         required: false
-        default: sig
         description: Extension of the SHA256SUMS signature file (SHA256SUMS.<ext>) fetched for verification.

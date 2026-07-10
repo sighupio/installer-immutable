@@ -7,20 +7,16 @@ argument_specs:
       sysctl_d_path:
         type: path
         required: false
-        default: "/etc/sysctl.d"
         description: Directory holding sysctl.d configuration files; created if absent.
       sysctl_file_path:
         type: path
         required: false
-        default: "{{ sysctl_d_path }}/99-sighup-distribution.conf"
         description: Destination file for the rendered custom kernel parameters.
       sysctl_dump_path:
         type: path
         required: false
-        default: "{{ sysctl_d_path }}/sysctl-dump.original"
         description: Path where original sysctl values are dumped before changes for restore.
       sysctl_parameters:
         type: list
         required: false
-        default: []
         description: List of custom kernel parameters as maps with name and value keys.

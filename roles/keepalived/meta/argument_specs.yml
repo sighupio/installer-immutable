@@ -9,38 +9,32 @@ argument_specs:
       keepalived_cluster:
         type: bool
         required: false
-        default: false
         description: >-
           Master enable flag. When true, renders keepalived.conf and starts/enables the
           service; when false, the service is stopped, disabled and masked.
       keepalived_interface:
         type: str
         required: false
-        default: eth0
         description: >-
           Network interface used for the VRRP instance and as the ansible_facts key to
           resolve each peer's IPv4 address for the unicast configuration.
       keepalived_on_controlplane:
         type: bool
         required: false
-        default: false
         description: >-
           When true (with keepalived_cluster), copies the API server health-check script
           and selects the check_api_server vrrp_script branch instead of check_haproxy.
       keepalived_passphrase:
         type: str
         required: false
-        default: "12345678"
         description: Password rendered into the authentication auth_pass field of keepalived.conf.
       keepalived_virtual_router_id:
         type: str
         required: false
-        default: "51"
         description: Quoted numeric string rendered into the virtual_router_id directive of keepalived.conf.
       keepalived_ansible_group_name:
         type: str
         required: false
-        default: "load_balancers"
         description: >-
           Inventory group name whose members build the unicast_peer list in keepalived.conf.
       keepalived_ip:

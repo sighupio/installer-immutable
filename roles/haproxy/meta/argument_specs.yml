@@ -17,26 +17,10 @@ argument_specs:
       haproxy_configuration_file_path:
         type: path
         required: false
-        default: "/etc/haproxy/haproxy.cfg"
         description: Destination path of the rendered HAProxy config; its directory holds the CA and validation mount.
       haproxy_configuration:
         type: str
         required: false
-        default: |
-          # example haproxy.cfg
-          global
-            maxconn 512
-          frontend stats
-            bind *:1936
-            mode http
-            log global
-            maxconn 10
-            timeout client 100s
-            stats enable
-            stats uri /stats
-            stats hide-version
-            stats refresh 30s
-            stats show-node
         description: >-
           HAProxy configuration body rendered into the config file via templates/haproxy.cfg.j2.
           furyctl always renders the real LB config; the default is a non-functional stats-only

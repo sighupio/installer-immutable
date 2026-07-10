@@ -9,22 +9,18 @@ argument_specs:
       etcd_config_dir:
         type: path
         required: false
-        default: /etc/etcd
         description: Destination directory for etcd.env and kubeadm-etcd.yml.
       etcd_certs_dir:
         type: path
         required: false
-        default: /etc/etcd/pki
         description: Directory holding etcd TLS material, referenced by etcd.env and etcdctl.sh.
       etcd_name:
         type: str
         required: false
-        default: "{{ inventory_hostname }}"
         description: etcd member name (ETCD_NAME); defaults to the inventory hostname.
       etcd_data_dir:
         type: path
         required: false
-        default: /var/lib/etcd
         description: etcd data directory (ETCD_DATA_DIR).
       etcd_initial_cluster:
         type: str
@@ -33,33 +29,27 @@ argument_specs:
       etcd_initial_cluster_state:
         type: str
         required: false
-        default: "new"
         choices: ["new", "existing"]
         description: Initial cluster state (ETCD_INITIAL_CLUSTER_STATE), typically new or existing.
       etcd_address:
         type: str
         required: false
-        default: "{{ ansible_facts['default_ipv4'].address }}"
         description: Node IP etcd binds/advertises on; defaults to the gathered default_ipv4 address.
       etcd_advertise_client_urls:
         type: str
         required: false
-        default: "https://{{ ansible_facts['default_ipv4'].address }}:2379"
         description: Client URL etcd advertises to peers (ETCD_ADVERTISE_CLIENT_URLS).
       etcd_listen_client_urls:
         type: str
         required: false
-        default: "https://{{ ansible_facts['default_ipv4'].address }}:2379,https://127.0.0.1:2379"
         description: Client URLs etcd listens on (ETCD_LISTEN_CLIENT_URLS).
       etcd_metrics_address:
         type: str
         required: false
-        default: "{{ ansible_facts['default_ipv4'].address }}"
         description: Host part of the etcd metrics listen URL (ETCD_LISTEN_METRICS_URLS).
       etcd_metrics_port:
         type: int
         required: false
-        default: 2378
         description: Port for the etcd metrics listen URL.
       etcd_endpoints:
         type: list
@@ -68,30 +58,22 @@ argument_specs:
       etcd_upgrade:
         type: bool
         required: false
-        default: false
         description: When true, skips the in-band etcd restart and runs the sysext align and certs renewal.
       etcd_on_control_plane:
         type: bool
         required: false
-        default: true
         description: Whether etcd runs on the control plane; when false the certs distribution tasks run.
       etcd_pki_local_dir:
         type: path
         required: false
-        default: "{{ playbook_dir }}/../pki/etcd"
         description: Local path to the furyctl-generated etcd CA copied to the node.
       etcd_certs:
         type: list
         required: false
-        default:
-          - etcd/ca.crt
-          - apiserver-etcd-client.crt
-          - apiserver-etcd-client.key
         description: Certificate filenames fetched from the etcd node and distributed to the etcd group.
       etcd_ansible_group_name:
         type: str
         required: false
-        default: "control_plane"
         description: Inventory group holding the etcd nodes; targets certificate distribution.
       os_update_reboot:
         type: bool

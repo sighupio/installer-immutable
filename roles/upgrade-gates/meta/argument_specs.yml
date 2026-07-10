@@ -18,7 +18,6 @@ argument_specs:
       node_upgrade_min_free_bytes:
         type: int
         required: false
-        default: 1073741824
         description: Minimum free bytes on / required to stage the sysext .raw.
       sysext_targets:
         type: dict
@@ -29,12 +28,12 @@ argument_specs:
       sysext_arch:
         type: str
         required: false
-        default: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
         description: sysext architecture used to index the per-target artifact URL.
         choices: ["x86-64", "arm64"]
       node_arch:
         type: str
         required: false
+        choices: ["x86-64", "arm64"]
         description: >-
           Rendered node architecture; consumed only inside the sysext_arch default expression,
           which supplies its own fallback.
@@ -51,17 +50,14 @@ argument_specs:
       kubectl_bin:
         type: str
         required: false
-        default: kubectl
         description: kubectl binary for the delegated node Ready wait.
       kubernetes_kubeconfig_path:
         type: path
         required: false
-        default: "./"
         description: Directory holding super-admin.conf for the kubectl wait --kubeconfig.
       kubernetes_hostname:
         type: str
         required: false
-        default: "{{ ansible_facts['fqdn'] }}"
         description: Kubernetes node name targeted by kubectl wait.
       sysext_targets:
         type: dict
@@ -82,10 +78,8 @@ argument_specs:
       kubectl_bin:
         type: str
         required: false
-        default: kubectl
         description: Controller-side kubectl for the delegated get-nodes checks.
       kubernetes_kubeconfig_path:
         type: path
         required: false
-        default: "./"
         description: Directory holding super-admin.conf for the kubectl --kubeconfig.
