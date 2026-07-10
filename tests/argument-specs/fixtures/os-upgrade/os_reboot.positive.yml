@@ -1,0 +1,4 @@
+---
+# Positive fixture for os-upgrade/os_reboot: the variables a real furyctl run provides. MUST pass validate_argument_spec.
+os_update_reboot: true
+os_update_target_version: 4593.2.3

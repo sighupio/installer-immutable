@@ -1,0 +1,9 @@
+---
+# Positive fixture for etcd/main: the variables a real furyctl run provides. MUST pass validate_argument_spec.
+etcd_endpoints:
+  - https://10.0.0.1:2379
+  - https://10.0.0.2:2379
+  - https://10.0.0.3:2379
+etcd_initial_cluster: cp1=https://10.0.0.1:2380,cp2=https://10.0.0.2:2380,cp3=https://10.0.0.3:2380
+etcd_upgrade: true
+os_update_reboot: true

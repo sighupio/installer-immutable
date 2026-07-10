@@ -1,0 +1,8 @@
+---
+# Positive fixture for node-maintenance/preflight: the variables a real furyctl run provides. MUST pass validate_argument_spec.
+kubectl_bin: /usr/local/bin/kubectl
+kubernetes_kubeconfig_path: ./
+kubernetes_version: 1.35.5
+os_update_reboot: true
+os_update_target_version: 4593.2.3
+upgrade: true

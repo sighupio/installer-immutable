@@ -1,0 +1,4 @@
+---
+# Negative fixture for os-upgrade/os_reboot: omits required 'os_update_target_version'.
+# MUST fail validate_argument_spec (asserted via block/rescue).
+os_update_reboot: true

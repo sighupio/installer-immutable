@@ -1,0 +1,41 @@
+---
+# Positive fixture for upgrade-gates/sanity: the variables a real furyctl run provides. MUST pass validate_argument_spec.
+kubectl_bin: /usr/local/bin/kubectl
+kubernetes_kubeconfig_path: ./
+kubernetes_version: 1.35.5
+sysext_targets:
+  containerd:
+    arch:
+      arm64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.2/containerd-2.3.2-arm64.raw
+      x86-64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.2/containerd-2.3.2-x86-64.raw
+    version: 2.3.2
+  etcd:
+    arch:
+      arm64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-arm64.raw
+      x86-64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-x86-64.raw
+    version: v3.6.6
+  keepalived:
+    arch:
+      arm64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-arm64.raw
+      x86-64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-x86-64.raw
+    version: v2.3.4
+  kubeadm:
+    arch:
+      arm64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-arm64.raw
+      x86-64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-x86-64.raw
+    version: v1.35.5
+  kubernetes:
+    arch:
+      arm64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.5/kubernetes-v1.35.5-arm64.raw
+      x86-64:
+        url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.5/kubernetes-v1.35.5-x86-64.raw
+    version: v1.35.5

@@ -1,0 +1,11 @@
+---
+# Positive fixture for haproxy/main: the variables a real furyctl run provides. MUST pass validate_argument_spec.
+haproxy_configuration: |
+  frontend k8s-api-server
+    bind *:6443
+    default_backend control-plane
+  backend control-plane
+    server cp1 10.0.0.1:6443 check
+haproxy_container_image: registry.example.io/fury/haproxy
+haproxy_container_tag: 3.2.9
+kubernetes_local_pki_dir: /etc/kubernetes/pki

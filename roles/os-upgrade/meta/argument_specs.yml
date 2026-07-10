@@ -1,0 +1,88 @@
+---
+argument_specs:
+  # Entry-point keys carry the .yml suffix to match how the distribution upgrade
+  # playbooks invoke them (include_role tasks_from: <name>.yml). ansible-core does
+  # not strip the extension when matching the arg spec, so the key must be exact.
+  os_stage.yml:
+    short_description: Stage a Flatcar OS update on the inactive A/B partition
+    description: >-
+      STAGE half of the os-upgrade role — writes update-engine config, launches the Flatcar
+      download async on the inactive partition when the node is behind the target, and gates
+      pre-drain if the server offers no arch-matching update.
+    options:
+      os_update_target_version:
+        type: str
+        required: true
+        description: >-
+          Target Flatcar version. Provided externally (rendered playbook vars / inventory on furyctl runs, or -e);
+          drives the downgrade assert, behind-target detection, and already-staged comparison.
+      os_update_conf_path:
+        type: path
+        required: false
+        description: Destination path for the rendered update.conf (update-engine configuration).
+      os_update_server:
+        type: str
+        required: false
+        description: >-
+          Omaha update server URL queried by update-engine (SERVER= in update.conf); override per
+          env/arch (arm64 needs an arm64-serving server).
+      os_update_group:
+        type: str
+        required: false
+        description: Flatcar release track (GROUP= in update.conf); not bounded to an enum by the code.
+      os_update_reboot_strategy:
+        type: str
+        required: false
+        choices: ["off", "reboot", "etcd-lock", "best-effort"]
+        description: >-
+          update-engine reboot strategy (REBOOT_STRATEGY= in update.conf); kept "off" so reboot
+          coordination stays external (e.g. KureD).
+      os_update_marker_path:
+        type: path
+        required: false
+        description: >-
+          Path of the staged-version marker; recorded because update-engine forgets NEW_VERSION when
+          restarted.
+      os_update_stage_async_timeout:
+        type: int
+        required: false
+        description: async timeout (seconds) on the fire-and-forget update_engine_client -update stage.
+  os_reboot.yml:
+    short_description: Wait on the staged OS update, then reboot and mark the partition good
+    description: >-
+      WAIT+REBOOT half of the os-upgrade role — waits on the async stage, verifies the staged
+      version matches the target, reboots to activate it, then marks the usr partition successful
+      or rolls back the staged extensions.
+    options:
+      os_update_target_version:
+        type: str
+        required: true
+        description: >-
+          Target Flatcar version. Provided externally (rendered playbook vars / inventory on furyctl runs, or -e);
+          drives the staged-version assert, marker content, and booted-version assert.
+      os_update_reboot:
+        type: bool
+        required: false
+        description: Layer toggle gating the reboot block; playbooks set true.
+      os_update_stage_async_retries:
+        type: int
+        required: false
+        description: >-
+          Retries on async_status until the stage finishes; retries x 5s delay must stay
+          >= os_update_stage_async_timeout.
+      os_update_marker_path:
+        type: path
+        required: false
+        description: Path of the staged-version marker written on stage and removed after a good boot.
+      os_update_reboot_timeout:
+        type: int
+        required: false
+        description: reboot_timeout (seconds) passed to ansible.builtin.reboot.
+      os_update_server:
+        type: str
+        required: false
+        description: Omaha update server URL; read only in the verify-failed fail_msg.
+      os_update_group:
+        type: str
+        required: false
+        description: Flatcar release track; read only in the verify-failed fail_msg.

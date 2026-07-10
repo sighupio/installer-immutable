@@ -1,0 +1,5 @@
+---
+# Negative fixture for haproxy/main: omits required 'haproxy_container_image'.
+# MUST fail validate_argument_spec (asserted via block/rescue).
+haproxy_container_tag: 3.2.9
+kubernetes_local_pki_dir: /etc/kubernetes/pki

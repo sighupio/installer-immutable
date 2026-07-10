@@ -1,0 +1,80 @@
+---
+argument_specs:
+  # Entry-point key carries the .yml suffix to match how it is invoked
+  # (include_role tasks_from: align.yml). ansible-core does not strip the
+  # extension when matching the arg spec, so the key must be exact.
+  align.yml:
+    short_description: Align a subset of system extensions to their target .raw versions.
+    description: >-
+      Downloads and activates the target .raw for each selected sysext component, tracking which
+      changed so the caller can decide daemon restarts and reboots.
+    options:
+      sysext_targets:
+        type: dict
+        required: true
+        description: >-
+          Full component map (name -> {version, arch[arch].url}) rendered by the caller; source of
+          each component's target version and .raw URL.
+      sysext_components:
+        type: list
+        required: true
+        description: >-
+          Component keys (a subset of sysext_targets) this run should align; others in the map are
+          left untouched.
+      sysext_refresh_after:
+        type: bool
+        required: false
+        description: >-
+          Caller opt-in for an in-band systemd-sysext refresh after staging; otherwise a staged
+          daemon extension is recorded for boot-time activation.
+      sysext_changed_components:
+        type: list
+        required: false
+        description: >-
+          Components whose .raw changed in this alignment; reset at start and read by the caller to
+          decide daemon restarts.
+      sysext_arch:
+        type: str
+        required: false
+        description: >-
+          System-extension architecture (x86-64/arm64) used as the key into each component's arch map;
+          from the rendered node_arch with an architecture-fact fallback.
+        choices: ["x86-64", "arm64"]
+      node_arch:
+        type: str
+        required: false
+        choices: ["x86-64", "arm64"]
+        description: >-
+          Per-node architecture override feeding the sysext_arch default expression; falls back to the
+          architecture fact when unset.
+      sysext_extensions_store:
+        type: path
+        required: false
+        description: Directory holding downloaded .raw files, one subdirectory per component.
+      sysext_active_dir:
+        type: path
+        required: false
+        description: Directory of active sysext symlinks (<name>.raw) that systemd-sysext merges.
+      sysext_verify_signature:
+        type: bool
+        required: false
+        description: >-
+          Verify the artifact signature over SHA256SUMS before activation; off by default because
+          releases publish only SHA256SUMS today.
+      sysext_signature_tool:
+        type: str
+        required: false
+        description: Tool used to verify SHA256SUMS when signature verification is enabled.
+        choices:
+          - cosign
+          - gpg
+      sysext_signature_key:
+        type: str
+        required: false
+        description: >-
+          Key passed to the verification tool (cosign --key or gpg --keyring); required when
+          sysext_verify_signature is enabled.
+      sysext_signature_ext:
+        type: str
+        required: false
+        description: Extension of the SHA256SUMS signature file (SHA256SUMS.<ext>) fetched for verification.

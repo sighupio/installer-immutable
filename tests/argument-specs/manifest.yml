@@ -1,0 +1,78 @@
+---
+# role -> entry-point -> its required options.
+# Coverage source of truth: validate.yml asserts the specs match this and that fixtures exist.
+- role: containerd
+  entry: main
+  required:
+    - containerd_sandbox_tag
+- role: etcd
+  entry: main
+  required:
+    - etcd_initial_cluster
+    - etcd_endpoints
+- role: etcd
+  entry: pre_reboot.yml
+  required: []
+- role: etcd
+  entry: post_reboot.yml
+  required: []
+- role: haproxy
+  entry: main
+  required:
+    - haproxy_container_image
+    - haproxy_container_tag
+- role: keepalived
+  entry: main
+  required: []
+- role: kube-control-plane
+  entry: main
+  required:
+    - kubernetes_version
+    - kubelet_csr_approver_tag
+    - kubernetes_control_plane_address
+- role: kube-worker
+  entry: main
+  required:
+    - kubernetes_version
+    - kubernetes_control_plane_address
+- role: node-maintenance
+  entry: preflight.yml
+  required:
+    - kubernetes_version
+    - os_update_target_version
+- role: node-maintenance
+  entry: drain.yml
+  required: []
+- role: node-maintenance
+  entry: uncordon.yml
+  required: []
+- role: os-upgrade
+  entry: os_stage.yml
+  required:
+    - os_update_target_version
+- role: os-upgrade
+  entry: os_reboot.yml
+  required:
+    - os_update_target_version
+- role: sysctl
+  entry: main
+  required: []
+- role: sysext
+  entry: align.yml
+  required:
+    - sysext_targets
+    - sysext_components
+- role: upgrade-gates
+  entry: fetch_admin_conf.yml
+  required: []
+- role: upgrade-gates
+  entry: infra_preflight.yml
+  required: []
+- role: upgrade-gates
+  entry: sanity.yml
+  required:
+    - kubernetes_version
+- role: upgrade-gates
+  entry: cluster_health_gate.yml
+  required:
+    - kubernetes_version

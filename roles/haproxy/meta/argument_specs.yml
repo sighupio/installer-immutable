@@ -1,0 +1,31 @@
+---
+argument_specs:
+  main:
+    short_description: Install and configure HAProxy as a containerd-managed systemd service
+    description: >-
+      Pulls the HAProxy container image, renders the configuration and systemd unit,
+      validates the config in a throwaway container, and starts the service.
+    options:
+      haproxy_container_image:
+        type: str
+        required: true
+        description: Container image reference without tag for the HAProxy container (ctr image pull and systemd unit).
+      haproxy_container_tag:
+        type: str
+        required: true
+        description: Image tag appended after ':' to haproxy_container_image when pulling and running HAProxy.
+      haproxy_configuration_file_path:
+        type: path
+        required: false
+        description: Destination path of the rendered HAProxy config; its directory holds the CA and validation mount.
+      haproxy_configuration:
+        type: str
+        required: false
+        description: >-
+          HAProxy configuration body rendered into the config file via templates/haproxy.cfg.j2.
+          furyctl always renders the real LB config; the default is a non-functional stats-only
+          placeholder with no API backend.
+      kubernetes_local_pki_dir:
+        type: path
+        required: false
+        description: Optional local Kubernetes PKI dir; its ca.crt is copied next to the config when defined.
