@@ -47,7 +47,7 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.8/kubeadm-v1.34.8-x86-64.raw
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.8/kubeadm-v1.34.8-arm64.raw
-      - name: python
+      - name: flatcar-python
         version: 4593.2.1
         arch:
           x86-64:
@@ -124,7 +124,7 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-x86-64.raw
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-arm64.raw
-      - name: python
+      - name: flatcar-python
         version: 4593.2.3
         arch:
           x86-64:
