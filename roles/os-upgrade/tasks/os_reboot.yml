@@ -53,6 +53,16 @@
         state: stopped
         masked: true
 
+# The flatcar-python sysext is pinned to the Flatcar version, so re-stage it for the target OS before the reboot activates it.
+- name: Stage the flatcar-python sysext for the target OS version
+  when: os_update_behind
+  ansible.builtin.include_role:
+    name: sysext
+    tasks_from: align.yml
+  vars:
+    sysext_components:
+      - flatcar-python
+
 # Reboot to activate a staged OS update or a staged daemon extension; the OS-specific verify/mark steps run only on an OS bump.
 - name: Reboot to activate the staged OS or extensions
   when:

@@ -47,6 +47,15 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.8/kubeadm-v1.34.8-x86-64.raw
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.8/kubeadm-v1.34.8-arm64.raw
+      - name: flatcar-python
+        version: 4593.2.1
+        arch:
+          x86-64:
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.1/flatcar-python.raw
+            sha256: 3dfa85fa9631ba7f2c0152c044e4100c91cbaf08ba6ec1c914faaf61acf5376b
+          arm64:
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.1/flatcar-python.raw
+            sha256: 2f7480dfba81b41eaf999bd8f9ad713cab4280de7eed7c6fa17be65575230bf9
     flatcar:
       version: 4593.2.1
       channel: stable
@@ -115,6 +124,15 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-x86-64.raw
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-arm64.raw
+      - name: flatcar-python
+        version: 4593.2.3
+        arch:
+          x86-64:
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.3/flatcar-python.raw
+            sha256: c7a75b895c12b305a5c1e6df19b32527831bc1e68d4725b2877a04e98c93c0b3
+          arm64:
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar-python.raw
+            sha256: 57097eaa0f970c3bcbde98733f00f010dfbfb6e6a78074066f9320c2d06f0ac4
     flatcar:
       version: 4593.2.3
       channel: stable
