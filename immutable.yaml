@@ -16,37 +16,47 @@ kubernetes:
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.1/containerd-2.3.1-x86-64.raw
+            sha256: a4c793c018e57c90c65ee4f223aa61cbba0cb053cbb7e5d6f3c7415dfa1d972e
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.1/containerd-2.3.1-arm64.raw
+            sha256: 5c69192293a3b1b600b5aaf208341aa81e8feed213d6a3c023129094848e8e98
       - name: kubernetes
         version: v1.34.8
         version_major_minor: v1.34
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.34.8/kubernetes-v1.34.8-x86-64.raw
+            sha256: fc60d60301b9ffd40c0f4b7619ff36a78903e3ab276cfb9e09e93c5c041f9301
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.34.8/kubernetes-v1.34.8-arm64.raw
+            sha256: 3d1a3e4ee23ce937ed1e9d65aef69c6313391dc355f2eb3676abbe7488f4d1ed
       - name: etcd
         version: v3.6.6
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-x86-64.raw
+            sha256: 7b2cd8aeaa4ec3b67034e79bce9bba11fc01c1a1aab35a844284c1df8541b9dd
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-arm64.raw
+            sha256: 4e2a220aa8706c99efa25c2ae74d72063e018d79dd2ecfc63a525290c5e37f6c
       - name: keepalived
         version: v2.3.4
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-x86-64.raw
+            sha256: cc47be41408ce034dc83d99a80c68ceaca786915893602e7bf4e3fc230d06fea
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-arm64.raw
+            sha256: bbe562c490cc5392576923866abffe9604a6ecb687aa3263ca80652524511274
       - name: kubeadm
         version: v1.34.8
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.8/kubeadm-v1.34.8-x86-64.raw
+            sha256: 567d074b22fec2b699d25f21c3bab51ee5fa89a9a808eccaabd9df80ca5855ab
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.34.8/kubeadm-v1.34.8-arm64.raw
+            sha256: fff609689899398a00bdba251532d5596edc8702c8cd5c34e865c65142b83053
       - name: flatcar-python
         version: 4593.2.1
         arch:
@@ -64,22 +74,28 @@ kubernetes:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.1/flatcar_production_pxe.vmlinuz
+            sha256: 040eba19811b7a0c7845c8e1ddb021c02d8495a300c82a7ca563d79bb42acecf
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.1/flatcar_production_pxe_image.cpio.gz
+            sha256: 9c931ff10d5210460eae7c00a756e5d305dc288153af32a5076f8bc11cb8a35d
           image:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.1/flatcar_production_image.bin.bz2
+            sha256: d13940e18dda0de27b251306bb52cdc99f982d3d47bbd50744eeac69b555c361
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.1/flatcar_production_pxe.vmlinuz
+            sha256: a461a1c6aa6caf89df9ec8742f82f26d99b96ab7e89c45fc84729664ef15bf3c
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.1/flatcar_production_pxe_image.cpio.gz
+            sha256: 33ba5c2d44343c40955b4ac2fc2a49aa720fbd620c4b7ce200bc55e60de3928a
           image:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.1/flatcar_production_image.bin.bz2
+            sha256: 8505dbd4d7a63c65c747bf80977f50fc6e37b31fce64320d92a94680fce7cbb9
   1.35.5:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.1"
@@ -93,37 +109,47 @@ kubernetes:
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.2/containerd-2.3.2-x86-64.raw
+            sha256: 0af2d6bcaec21588d76613cafb32116f93e44c881b4b25d1f9bdad6b3cb8faee
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.2/containerd-2.3.2-arm64.raw
+            sha256: bcbb7fe691bd03665392005a094c5e18d9472a673e74cfcff989e95ac1c011a1
       - name: kubernetes
         version: v1.35.5
         version_major_minor: v1.35
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.5/kubernetes-v1.35.5-x86-64.raw
+            sha256: c840cf8659bec4fd0cf1236b25f0006ed49b14aad146c722e640b06f49094e86
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.5/kubernetes-v1.35.5-arm64.raw
+            sha256: 7f084bdc8d34eb7930ad6281c7b681aa866be1ec6c496451973e8dfc57a709ae
       - name: etcd
         version: v3.6.6
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-x86-64.raw
+            sha256: 7b2cd8aeaa4ec3b67034e79bce9bba11fc01c1a1aab35a844284c1df8541b9dd
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.6/etcd-v3.6.6-arm64.raw
+            sha256: 4e2a220aa8706c99efa25c2ae74d72063e018d79dd2ecfc63a525290c5e37f6c
       - name: keepalived
         version: v2.3.4
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-x86-64.raw
+            sha256: cc47be41408ce034dc83d99a80c68ceaca786915893602e7bf4e3fc230d06fea
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.3.4/keepalived-v2.3.4-arm64.raw
+            sha256: bbe562c490cc5392576923866abffe9604a6ecb687aa3263ca80652524511274
       - name: kubeadm
         version: v1.35.5
         arch:
           x86-64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-x86-64.raw
+            sha256: d0d8476586a2ead204aeaaccaf2e8d9992d053c3be1a15006c19e229118cb967
           arm64:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.5/kubeadm-v1.35.5-arm64.raw
+            sha256: fc6c401219924132cfc114ebe16bb4251213988f7b1030ab3ca3c6eeedac0f7d
       - name: flatcar-python
         version: 4593.2.3
         arch:
@@ -141,19 +167,25 @@ kubernetes:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.3/flatcar_production_pxe.vmlinuz
+            sha256: 439699d75d163b1432460ade95267bcaea0256297ea653c3f3e128178e6c89e5
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.3/flatcar_production_pxe_image.cpio.gz
+            sha256: ed7daf4e3c7c698c5079a753d5f742dad188aed73293541c5f536d71a0f470f9
           image:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.3/flatcar_production_image.bin.bz2
+            sha256: a7c057dab938a834c55b4d767f2893f166c9a0c4032f27fcb682676226c073af
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_pxe.vmlinuz
+            sha256: 5b4b837fca4c6553a552d83fb2405c57ea05365bb1a5ccae0f9928b635057a31
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_pxe_image.cpio.gz
+            sha256: 362a961425039b8b27d41b2b4582228fdf6f3cb52389d4a828e12cde75657cee
           image:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_image.bin.bz2
+            sha256: 53c92521a4c567debf66cbc18f64ab0fa98dc395b994bfcbbe8a86d31310c82e
