@@ -61,6 +61,10 @@ argument_specs:
         type: bool
         required: false
         description: serverTLSBootstrap in the KubeletConfiguration.
+      kubelet_config_seccomp_default:
+        type: bool
+        required: false
+        description: seccompDefault in the KubeletConfiguration; applies RuntimeDefault to pods without an explicit seccompProfile.
       kubelet_config_pod_pids_limit:
         type: int
         required: false
