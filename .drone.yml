@@ -1,0 +1,166 @@
+---
+kind: pipeline
+type: docker
+name: QA
+
+volumes:
+  - name: mise-cache
+    host:
+      path: /root/mise_data_dir
+
+steps:
+  - name: install-tools
+    image: quay.io/sighup/mise:v2026.6.14
+    pull: always
+    depends_on:
+      - clone
+    environment:
+      MISE_DATA_DIR: /mise-data
+      MISE_GITHUB_TOKEN:
+        from_secret: GITHUB_TOKEN
+    volumes:
+      - name: mise-cache
+        path: /mise-data
+    commands:
+      - |
+        mise install
+        eval "$(mise activate bash --shims)"
+
+  - name: lint
+    image: quay.io/sighup/mise:v2026.6.14
+    pull: always
+    depends_on:
+      - install-tools
+    environment:
+      MISE_DATA_DIR: /mise-data
+      CGO_ENABLED: 0
+      GOCACHE: /drone/src/.go/cache
+      GOMODCACHE: /drone/src/.go/modcache
+      GOTMPDIR: /drone/src/.go/tmp
+    volumes:
+      - name: mise-cache
+        path: /mise-data
+    commands:
+      - eval "$(mise activate bash --shims)"
+      - mise run lint
+
+  - name: fmt
+    image: quay.io/sighup/mise:v2026.6.14
+    pull: always
+    depends_on:
+      - install-tools
+    environment:
+      MISE_DATA_DIR: /mise-data
+      CGO_ENABLED: 0
+      GOCACHE: /drone/src/.go/cache
+      GOMODCACHE: /drone/src/.go/modcache
+      GOTMPDIR: /drone/src/.go/tmp
+    volumes:
+      - name: mise-cache
+        path: /mise-data
+    commands:
+      - eval "$(mise activate bash --shims)"
+      - mise run fmt-check
+
+  - name: test argspec
+    image: quay.io/sighup/mise:v2026.6.14
+    pull: always
+    depends_on:
+      - install-tools
+    environment:
+      MISE_DATA_DIR: /mise-data
+      CGO_ENABLED: 0
+      GOCACHE: /drone/src/.go/cache
+      GOMODCACHE: /drone/src/.go/modcache
+      GOTMPDIR: /drone/src/.go/tmp
+    volumes:
+      - name: mise-cache
+        path: /mise-data
+    commands:
+      - eval "$(mise activate bash --shims)"
+      - "mise run test:argument-specs"
+---
+name: release
+kind: pipeline
+type: docker
+
+depends_on:
+  - QA
+
+trigger:
+  ref:
+    include:
+      - refs/tags/**
+
+steps:
+  - name: prepare-tar-gz
+    image: alpine:latest
+    pull: always
+    depends_on: [clone]
+    commands:
+      - tar -zcvf sd-installer-immutable-${DRONE_TAG}.tar.gz roles/ LICENSE README.md
+    when:
+      ref:
+        include:
+          - refs/tags/**
+
+  - name: prepare-release-notes
+    image: quay.io/sighup/fury-release-notes-plugin:3.12_2.10.0
+    pull: always
+    depends_on: [clone]
+    settings:
+      release_notes_file_path: release-notes.md
+    when:
+      ref:
+        include:
+          - refs/tags/**
+
+  - name: publish-prerelease
+    image: plugins/github-release
+    pull: always
+    depends_on:
+      - prepare-tar-gz
+      - prepare-release-notes
+    settings:
+      api_key:
+        from_secret: GITHUB_TOKEN
+      file_exists: overwrite
+      files:
+        - sd-installer-immutable-${DRONE_TAG}.tar.gz
+      prerelease: true
+      overwrite: true
+      title: "Preview ${DRONE_TAG}"
+      note: release-notes.md
+      checksum:
+        - md5
+        - sha256
+    when:
+      ref:
+        include:
+          - refs/tags/v**-rc**
+
+  - name: publish-stable
+    image: plugins/github-release
+    pull: always
+    depends_on:
+      - prepare-tar-gz
+      - prepare-release-notes
+    settings:
+      api_key:
+        from_secret: GITHUB_TOKEN
+      file_exists: overwrite
+      files:
+        - sd-installer-immutable-${DRONE_TAG}.tar.gz
+      prerelease: false
+      overwrite: true
+      title: "Release ${DRONE_TAG}"
+      note: release-notes.md
+      checksum:
+        - md5
+        - sha256
+    when:
+      ref:
+        exclude:
+          - refs/tags/v**-rc**
+        include:
+          - refs/tags/v**
