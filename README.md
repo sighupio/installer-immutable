@@ -13,49 +13,59 @@ Kubernetes Installer for Immutable Kind
 ![License](https://img.shields.io/github/license/sighupio/installer-immutablelabel=License)
 ![Slack](https://img.shields.io/badge/slack-@kubernetes/fury-yellow.svg?logo=slack&label=Slack)
 
-> [!CAUTION]
-> WORK IN PROGRESS
+> [!WARNING]
+> The Immutable Installer is in **alpha** status and is under active development. Its configuration and behavior can
+> change between releases.
 
 <!-- <SD-DOCS> -->
 
-**Immutable Installer** is a Kubernetes installer for the [SIGHUP Distribution (SD)][sd-repo] that provides
-several Ansible roles to create a Kubernetes cluster on top of [Flatcar Container Linux][flatcar-site] machines.
+**Immutable Installer** is a Kubernetes installer for the [SIGHUP Distribution (SD)][sd-repo]. The installer has a set of
+Ansible roles that create a Kubernetes cluster on [Flatcar Container Linux][flatcar-site] machines.
 
-If you are new to SD please refer to the [official documentation][sd-docs] on how to get started with SD.
+If you are new to SD, refer to the [official documentation][sd-docs] to get started.
 
 ## Overview
 
-**Immutable Installer** uses a collection of open source tools to create a Kubernetes cluster on top of Flatcar Container Linux machines preconfigured using the `sysupdate-sysext` from the [`installer-immutable-sysext`][immutable-sysext] repository.
+The installer uses open source tools to create a Kubernetes cluster on Flatcar Container Linux machines. `furyctl`
+bootstraps and configures these machines with [Ignition][ignition] and with the system extensions (`sysext`) from the
+[`installer-immutable-sysext`][immutable-sysext] repository.
 
 ## Roles
 
-The following roles are included in the SIGHUP Distribution Immutable Installer:
+These roles are part of the SIGHUP Distribution Immutable Installer:
 
-| Role                                           | Description                                                                                      |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [containerd](roles/containerd)                 | Ansible role to configure containerd as container runtime                                        |
-| [etcd](roles/etcd)                             | Ansible role to configure etcd standalone or in the control plane machines                       |
-| [haproxy](roles/haproxy)                       | Ansible role to configure HAProxy as load balancer for the APIServer (and other)                 |
-| [keepalived](roles/keepalived)                 | Ansible role to configure keepalived for a shared Virtual IP between nodes (HA)                  |
-| [kube-control-plane](roles/kube-control-plane) | Ansible role to configure control-plane nodes                                                    |
-| [kube-worker](roles/kube-worker)               | Ansible role to configure worker nodes and join them to the cluster                              |
-| [node-maintenance](roles/node-maintenance)     | Upgrade task-file library: the cordon/drain → uncordon maintenance envelope (preflight decision) |
-| [os-upgrade](roles/os-upgrade)                 | Upgrade task-file library: the Flatcar A/B OS update (stage, reboot, mark good)                  |
-| [sysctl](roles/sysctl)                         | Ansible role to configure kernel paramaters on the machines                                      |
-| [sysext](roles/sysext)                         | Helper role to align binary system extensions to their target versions                           |
-| [upgrade-gates](roles/upgrade-gates)           | Upgrade task-file library: read-only validation gates (cluster health, infra preflight, sanity)  |
+| Role                                           | Description                                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| [containerd](roles/containerd)                 | Ansible role to configure [`containerd`][containerd] as the container runtime                 |
+| [etcd](roles/etcd)                             | Ansible role to configure [`etcd`][etcd] on the control-plane nodes or on separate nodes      |
+| [haproxy](roles/haproxy)                       | Ansible role to configure [`HAProxy`][haproxy] as the load balancer for the API server        |
+| [keepalived](roles/keepalived)                 | Ansible role to configure `keepalived` for a virtual IP address that the nodes share (HA)     |
+| [kube-control-plane](roles/kube-control-plane) | Ansible role to configure the control-plane nodes                                             |
+| [kube-worker](roles/kube-worker)               | Ansible role to configure the worker nodes and to join them to the cluster                    |
+| [node-maintenance](roles/node-maintenance)     | Task-file library for upgrades: it cordons, drains, and then uncordons a node                 |
+| [os-upgrade](roles/os-upgrade)                 | Task-file library for upgrades: it does the Flatcar A/B OS update (stage, reboot, mark good)  |
+| [sysctl](roles/sysctl)                         | Ansible role to configure the kernel parameters on the machines                               |
+| [sysext](roles/sysext)                         | Helper role to align the binary system extensions to their target versions                    |
+| [upgrade-gates](roles/upgrade-gates)           | Task-file library for upgrades: read-only checks of the cluster health and the infrastructure |
 
-Click on each package to see its full documentation.
+Click on each role to read its full documentation.
 
 ## Compatibility
 
-Check the [compatibility matrix][compatibility-matrix] for information about compatibility of the installer.
+Refer to the [compatibility matrix][compatibility-matrix] for the versions that this installer supports.
 
 ## Usage
 
-This installer is intended to be used via `furyctl` and not to be used stand-alone. Use at your own risk.
+To create or to upgrade a Kubernetes cluster with this installer, use [`furyctl`][furyctl-repo]. `furyctl` is our companion
+CLI tool that manages the full life cycle of SD clusters.
 
-For a walkthrough of how the Immutable kind installs a cluster — onto bare-metal **or** virtual machines — see the [Immutable Installation Guide][immutable-install]. It is an index: it shows the boot decision, the flow every case shares, and links to a focused document per case (DHCP+PXE, iPXE ISO, deploy DHCP, manual OS ISO). Key terms link to their official documentation inline.
+The `Immutable` provider automates this installer completely. SIGHUP does not support stand-alone use of the installer.
+If you use it stand-alone, you accept the risk.
+
+The [Immutable Installation Guide][immutable-install] shows how the `Immutable` kind installs a cluster, on bare-metal
+machines or on virtual machines. The guide is an index: it shows the boot decision and the flow that all the cases have in
+common. It also links to one document for each case: DHCP and PXE, iPXE ISO, deploy DHCP, and manual OS ISO. In the guide,
+key terms link to their official documentation.
 
 <!-- Links -->
 
@@ -67,6 +77,10 @@ For a walkthrough of how the Immutable kind installs a cluster — onto bare-met
 [getting-started]: https://docs.sighup.io/docs/getting-started/distro-on-vms
 [immutable-sysext]: https://github.com/sighupio/installer-immutable-sysext
 [flatcar-site]: https://www.flatcar.org/
+[ignition]: https://coreos.github.io/ignition/
+[containerd]: https://containerd.io/
+[etcd]: https://etcd.io/
+[haproxy]: https://www.haproxy.org/
 
 <!-- </SD-DOCS> -->
 
