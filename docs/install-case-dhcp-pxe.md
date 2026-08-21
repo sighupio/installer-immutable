@@ -20,11 +20,13 @@ DHCP you control (for example a libvirt network or a cloud subnet with custom DH
 
 ## How to set it up
 
-You add HTTP-boot options to your **existing** [DHCP][dhcp] server. This case is **UEFI-only**: it uses
-[UEFI HTTP Boot][uefi-httpboot] (UEFI 2.5+), where the firmware's built-in HTTP client downloads the boot file
-directly over [HTTP][http] — **no [TFTP][tftp] anywhere**. **Legacy BIOS is not supported** (its PXE ROM has no
-HTTP client and can only TFTP-boot). [`furyctl`][furyctl] serves only the per-MAC iPXE/[Ignition][ignition]
-script on HTTP `:8080`; it does **not** run DHCP and does **not** serve `ipxe.efi`.
+You add HTTP-boot options to your **existing** [DHCP][dhcp] server. The path described here is **UEFI-only**:
+it uses [UEFI HTTP Boot][uefi-httpboot] (UEFI 2.5+), where the firmware's built-in HTTP client downloads
+`ipxe.efi` directly over [HTTP][http] — **no [TFTP][tftp] anywhere**. **Legacy BIOS cannot do this** (its PXE
+ROM has no HTTP client and can only TFTP-boot). That constraint belongs to the `ipxe.efi` chainload and not to
+the Immutable kind — if your NICs already run iPXE you can skip it, see the paragraph after the three rules.
+[`furyctl`][furyctl] serves only the per-MAC iPXE/[Ignition][ignition] script on HTTP `:8080`; it does **not**
+run DHCP and does **not** serve `ipxe.efi`.
 
 There are **three things** to configure (the same on every DHCP server — translate to your product's syntax):
 
@@ -51,16 +53,26 @@ There are **three things** to configure (the same on every DHCP server — trans
 The [deploy a new DHCP + PXE](install-case-deploy-dhcp.md) case shows a complete, ready-to-run dnsmasq example
 of exactly these three rules.
 
+**If your NICs already run iPXE, only rule 3 applies.** Rules 1 and 2 exist for one purpose: to *get
+[iPXE][ipxe] running on the machine*. Many server NICs ship an iPXE ROM, and some firmware can be set to boot
+iPXE directly. On such a machine the **very first** DHCP request already carries user-class (option 77)
+`"iPXE"`, so your DHCP server hands it the furyctl per-MAC boot URL immediately — **no `ipxe.efi`, and no
+separate HTTP server to host it**. The UEFI requirement goes away with them, because nothing has to HTTP-boot
+an EFI binary any more: furyctl's per-MAC script only loads the [Flatcar][flatcar] kernel and initrd, and makes
+no assumption about the firmware. **Virtual machines usually still need the chainload**, because their UEFI
+firmware (OVMF under QEMU, for example) does HTTP Boot but is not iPXE.
+
 Then:
 
-1. Host `ipxe.efi` on your HTTP server so it is reachable at `http://<http-host>/ipxe.efi`, then apply the
-   three rules above to your DHCP server and reload it.
-2. Set each node's firmware to **UEFI network boot / HTTP Boot** (bare metal: enable HTTP Boot in UEFI setup;
-   VM: put the virtual NIC first in the boot order).
+1. If your NICs do not run iPXE, host `ipxe.efi` on your HTTP server so it is reachable at
+   `http://<http-host>/ipxe.efi`. Then apply the rules above to your DHCP server and reload it.
+2. Set each node to boot from the network first — **UEFI HTTP Boot** for the chainload path (bare metal:
+   enable HTTP Boot in UEFI setup; VM: put the virtual NIC first in the boot order), or plain network boot if
+   the NIC runs iPXE itself.
 3. Start furyctl so its iPXE/[Ignition][ignition] boot server is serving per-MAC configs — see
    [Installing with furyctl](IMMUTABLE_INSTALL.md#installing-with-furyctl) (`furyctl apply --phase infrastructure`).
-4. Power on the nodes. UEFI HTTP-boots `ipxe.efi`, chainloads to furyctl, pulls its config, boots
-   [Flatcar][flatcar], and continues through the shared flow.
+4. Power on the nodes. On the chainload path UEFI HTTP-boots `ipxe.efi` first; either way iPXE reaches
+   furyctl, pulls its config, boots [Flatcar][flatcar], and continues through the shared flow.
 
 > **Note:** in `http://<furyctl-host>:8080/boot/${mac:hexhyp}`, the only value you supply is `<furyctl-host>`
 > (the host/IP running furyctl). The `/boot/${mac:hexhyp}` path scheme and the default port `8080` are **fixed by

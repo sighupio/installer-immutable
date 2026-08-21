@@ -7,8 +7,9 @@
 
 Use this case when the network segment **has no [DHCP][dhcp] server, but you are able to deploy one**. After
 standing up DHCP for [UEFI HTTP Boot][uefi-httpboot], the path is the same fully-automated network boot as the
-"existing DHCP" case (**UEFI-only** — legacy BIOS is not supported). The target node can be **bare metal or a
-virtual machine** — for VMs, the new DHCP service is typically a small VM on the same virtual network.
+"existing DHCP" case (**UEFI-only**, unless your NICs already run [iPXE][ipxe] — see below). The target node can
+be **bare metal or a virtual machine** — for VMs, the new DHCP service is typically a small VM on the same
+virtual network.
 
 ## Flow
 
@@ -21,9 +22,10 @@ virtual machine** — for VMs, the new DHCP service is typically a small VM on t
 
 [`furyctl`][furyctl] serves the iPXE script and [Ignition][ignition] config but **does not run DHCP** — and it
 does **not** serve `ipxe.efi` either. So the new DHCP service must hand UEFI HTTP-Boot firmware the `ipxe.efi`
-bootloader over **[HTTP][http]** (no [TFTP][tftp]) and then chainload iPXE clients to furyctl. This path is
-**UEFI-only**: [UEFI HTTP Boot][uefi-httpboot] needs UEFI 2.5+ firmware; legacy BIOS cannot HTTP boot and is not
-supported here.
+bootloader over **[HTTP][http]** (no [TFTP][tftp]) and then chainload iPXE clients to furyctl. That chainload
+is **UEFI-only**: [UEFI HTTP Boot][uefi-httpboot] needs UEFI 2.5+ firmware, and legacy BIOS cannot HTTP boot.
+The constraint belongs to the chainload, **not** to the Immutable kind — machines whose NICs already run iPXE
+skip it entirely (see below).
 
 There is **no official [`dnsmasq`][dnsmasq] container**, so — following the Flatcar / [matchbox][matchbox]
 ecosystem recommendation — we deploy `quay.io/poseidon/dnsmasq` for **DHCP**. But **dnsmasq has no built-in HTTP
@@ -31,6 +33,16 @@ server**: it tells the firmware where to GET `ipxe.efi` but cannot serve it. So 
 server** for `ipxe.efi` ([nginx][nginx], [Caddy][caddy], or `python3 -m http.server`). The dnsmasq image bundles
 `ipxe.efi` in its (now-unused) TFTP root — copy it out, or download it from [boot.ipxe.org][ipxe-download] — and
 serve it from that HTTP host.
+
+**If your NICs already run iPXE, you need neither `ipxe.efi` nor the HTTP server.** The three `httpboot`
+directives below (`dhcp-vendorclass`, `dhcp-option-force`, and the first `dhcp-boot`) exist for one purpose: to
+*get [iPXE][ipxe] running on the machine*. Many server NICs ship an iPXE ROM, and some firmware can be set to
+boot iPXE directly. Those machines send user-class (option 77) `"iPXE"` on their **very first** DHCP request, so
+the two `ipxe` directives are all you need and `dnsmasq` alone is enough. The UEFI requirement goes away with
+them, because nothing has to HTTP-boot an EFI binary any more: furyctl's per-MAC script only loads the
+[Flatcar][flatcar] kernel and initrd, and makes no assumption about the firmware. **Virtual machines usually
+still need the chainload**, because their UEFI firmware (OVMF under QEMU, for example) does HTTP Boot but is not
+iPXE.
 
 Run the container on a host reachable on the node's network segment. There are **two equivalent ways** — pick
 whichever fits your workflow.
@@ -62,16 +74,18 @@ docker run --rm --cap-add=NET_ADMIN --net=host quay.io/poseidon/dnsmasq -d -q \
   --dhcp-boot=tag:ipxe,http://<furyctl-host>:8080/boot/${mac:hexhyp}
 ```
 
-> **BIOS not supported.** UEFI HTTP Boot requires UEFI 2.5+ firmware; legacy-BIOS (and pre-2.5-UEFI) nodes have
-> no HTTP client and cannot use this case.
+> **BIOS and the chainload.** UEFI HTTP Boot requires UEFI 2.5+ firmware; legacy-BIOS (and pre-2.5-UEFI) nodes
+> have no HTTP client, so they cannot fetch `ipxe.efi` this way. Nodes that already run iPXE are unaffected —
+> they never fetch it (see above).
 
 ### Then, either way
 
 1. Start furyctl so its iPXE/Ignition boot server is serving per-MAC configs — see
    [Installing with furyctl](IMMUTABLE_INSTALL.md#installing-with-furyctl) (`furyctl apply --phase infrastructure`).
-2. Set each node to **UEFI network boot / HTTP Boot** and power it on. The firmware HTTP-boots `ipxe.efi` from
-   your HTTP server, iPXE chainloads to furyctl, pulls its config, boots [Flatcar][flatcar], and continues
-   through the shared flow.
+2. Set each node to boot from the network first — **UEFI HTTP Boot** for the chainload path, or plain network
+   boot if the NIC runs iPXE itself — and power it on. On the chainload path the firmware HTTP-boots
+   `ipxe.efi` from your HTTP server first; either way iPXE reaches furyctl, pulls its config, boots
+   [Flatcar][flatcar], and continues through the shared flow.
 
 > **Why this image?** There is no Docker Official Image or verified-publisher dnsmasq container, so we use the
 > Flatcar/matchbox ecosystem recommendation: [`quay.io/poseidon/dnsmasq`][matchbox] (the matchbox project's
@@ -88,6 +102,7 @@ docker run --rm --cap-add=NET_ADMIN --net=host quay.io/poseidon/dnsmasq -d -q \
 [http]: https://datatracker.ietf.org/doc/html/rfc9110
 [tftp]: https://datatracker.ietf.org/doc/html/rfc1350
 [uefi-httpboot]: https://ipxe.org/appnote/uefihttp
+[ipxe]: https://ipxe.org/
 [ipxe-download]: https://ipxe.org/download
 [nginx]: https://nginx.org/en/docs/
 [caddy]: https://caddyserver.com/docs/
