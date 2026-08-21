@@ -103,7 +103,7 @@ every case:
          privateKeyPath: "${HOME}/.ssh/id_ed25519"
          publicKeyPath: "${HOME}/.ssh/id_ed25519.pub"
        nodes:
-         - hostname: "ctrl01.example.local"
+         - hostname: "ctrl01.example.com"
            macAddress: "52:54:00:10:00:01"   # keys this node's per-MAC boot + Ignition config
            arch: "x86-64"                     # x86-64 | arm64 — furyctl resolves Flatcar/sysext assets per arch
            storage:
@@ -116,7 +116,7 @@ every case:
                  nameservers:
                    addresses: ["8.8.8.8"]
 
-         - hostname: "worker01.example.local"
+         - hostname: "worker01.example.com"
            macAddress: "52:54:00:10:00:02"
            arch: "x86-64"
            storage:
@@ -133,16 +133,16 @@ every case:
          podCIDR: "10.244.0.0/16"
          serviceCIDR: "10.96.0.0/12"
        controlPlane:
-         address: "ctrl01.example.local:6443"
+         address: "ctrl01.example.com:6443"
          members:
-           - hostname: "ctrl01.example.local"
+           - hostname: "ctrl01.example.com"
        etcd:
          members:
-           - hostname: "ctrl01.example.local"
+           - hostname: "ctrl01.example.com"
        nodeGroups:
          - name: workers
            nodes:
-             - hostname: "worker01.example.local"
+             - hostname: "worker01.example.com"
      # spec.distribution.modules: see the SIGHUP Distribution docs
    ```
 
