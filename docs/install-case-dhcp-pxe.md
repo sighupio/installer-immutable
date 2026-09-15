@@ -66,9 +66,11 @@ Then:
 
 1. If your NICs do not run iPXE, host `ipxe.efi` on your HTTP server so it is reachable at
    `http://<http-host>/ipxe.efi`. Then apply the rules above to your DHCP server and reload it.
-2. Set each node to boot from the network first — **UEFI HTTP Boot** for the chainload path (bare metal:
-   enable HTTP Boot in UEFI setup; VM: put the virtual NIC first in the boot order), or plain network boot if
-   the NIC runs iPXE itself.
+2. Enable network boot on each node — **UEFI HTTP Boot** for the chainload path (bare metal: enable HTTP Boot
+   in UEFI setup; VM: make sure the virtual NIC is a boot entry), or plain network boot if the NIC runs iPXE
+   itself. Keep the **install disk ahead of the network** in the boot order: the disk is still empty, so the
+   firmware falls through to the network and the install starts; once Flatcar is on the disk the node boots
+   from it instead. See [Shared flow](IMMUTABLE_INSTALL.md#shared-flow-every-case).
 3. Start furyctl so its iPXE/[Ignition][ignition] boot server is serving per-MAC configs — see
    [Installing with furyctl](IMMUTABLE_INSTALL.md#installing-with-furyctl) (`furyctl apply --phase infrastructure`).
 4. Power on the nodes. On the chainload path UEFI HTTP-boots `ipxe.efi` first; either way iPXE reaches

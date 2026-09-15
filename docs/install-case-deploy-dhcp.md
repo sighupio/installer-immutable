@@ -82,10 +82,12 @@ docker run --rm --cap-add=NET_ADMIN --net=host quay.io/poseidon/dnsmasq -d -q \
 
 1. Start furyctl so its iPXE/Ignition boot server is serving per-MAC configs — see
    [Installing with furyctl](IMMUTABLE_INSTALL.md#installing-with-furyctl) (`furyctl apply --phase infrastructure`).
-2. Set each node to boot from the network first — **UEFI HTTP Boot** for the chainload path, or plain network
-   boot if the NIC runs iPXE itself — and power it on. On the chainload path the firmware HTTP-boots
+2. Enable network boot on each node — **UEFI HTTP Boot** for the chainload path, or plain network boot if the
+   NIC runs iPXE itself — keep the **install disk ahead of the network** in the boot order, and power it on.
+   The disk is still empty, so the firmware falls through to the network. On the chainload path it HTTP-boots
    `ipxe.efi` from your HTTP server first; either way iPXE reaches furyctl, pulls its config, boots
-   [Flatcar][flatcar], and continues through the shared flow.
+   [Flatcar][flatcar], and continues through the shared flow. Once Flatcar is installed the node boots from
+   the disk. See [Shared flow](IMMUTABLE_INSTALL.md#shared-flow-every-case).
 
 > **Why this image?** There is no Docker Official Image or verified-publisher dnsmasq container, so we use the
 > Flatcar/matchbox ecosystem recommendation: [`quay.io/poseidon/dnsmasq`][matchbox] (the matchbox project's

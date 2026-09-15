@@ -73,6 +73,12 @@ Whatever case bootstraps the node, the rest of the install is the same:
    [`kubeadm`][kubeadm] to bootstrap the control plane), `kube-worker`, and `sysctl` — turning a fleet of identical
    nodes into a working SD cluster, ready for the Distribution phase.
 
+> **Boot order: keep the install disk ahead of the network.** Step 2 relies on the firmware falling *through* to
+> the network because the install disk is still empty, and step 3 relies on the node booting from that disk once
+> Flatcar is written to it. furyctl's per-MAC iPXE script has **no local-boot fallback** — it always loads the
+> live installer. A node left with network boot ahead of the disk therefore re-enters stage 1 at every reboot and
+> never completes the install.
+
 ## Installing with furyctl
 
 The boot environment from your chosen case is the only part that differs; the furyctl commands are the same for
