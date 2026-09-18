@@ -44,3 +44,9 @@ argument_specs:
           Virtual IP address rendered into the virtual_ipaddress block of keepalived.conf.
           Caller-passed; effectively required whenever keepalived_cluster is true (no default
           in the role).
+      upgrade:
+        type: bool
+        required: false
+        description: >-
+          Caller-passed run toggle. When true, stage the keepalived sysext during
+          upgrade; the reboot applies the new binary.
