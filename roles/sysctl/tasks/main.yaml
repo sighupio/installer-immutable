@@ -31,4 +31,6 @@
   register: sysctl_load
   changed_when: sysctl_load.rc == 0
   ansible.builtin.command:
-    cmd: "sysctl -p --system"
+    # Not "-p --system": -p with no file after it reads /etc/sysctl.conf, and Flatcar does not
+    # give that file. --system reads the search path, and /etc/sysctl.conf when it is there.
+    cmd: "sysctl --system"
