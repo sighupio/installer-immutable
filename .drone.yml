@@ -129,7 +129,7 @@ steps:
         - sd-installer-immutable-${DRONE_TAG}.tar.gz
       prerelease: true
       overwrite: true
-      title: "Preview ${DRONE_TAG}"
+      title: "SD Immutable Installer ${DRONE_TAG}"
       note: release-notes.md
       checksum:
         - md5
@@ -153,7 +153,7 @@ steps:
         - sd-installer-immutable-${DRONE_TAG}.tar.gz
       prerelease: false
       overwrite: true
-      title: "Release ${DRONE_TAG}"
+      title: "SD Immutable Installer ${DRONE_TAG}"
       note: release-notes.md
       checksum:
         - md5
