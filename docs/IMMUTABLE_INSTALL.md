@@ -26,6 +26,20 @@ The Immutable kind is **alpha** and is driven entirely by [`furyctl`][furyctl] â
   the private key to connect after boot.
 - **`kubectl`** on the furyctl host, to verify the cluster afterwards.
 
+The environment must also provide:
+
+- **A working [DNS][dns] with a record for every node**, resolvable from every node and from the furyctl
+  host: etcd uses the node hostnames to form its cluster. If a load balancer or [keepalived][keepalived] sits
+  in front of the control plane, we recommend a DNS record for `spec.kubernetes.controlPlane.address` too;
+  otherwise it can be an IP address. The furyctl boot server URL (`spec.infrastructure.ipxeServer.url`) can
+  also be an IP address.
+- **Access to an [NTP][ntp] server from every node.** By default, Flatcar uses the NTP servers that DHCP
+  offers, or else the public `flatcar.pool.ntp.org` pool, which needs Internet access. You can configure your
+  own NTP servers: see [Configuring date and time zone][flatcar-ntp] in the Flatcar documentation.
+- **A dedicated, clean OS disk on every node.** The install disk (`storage.installDisk`) is for the OS only,
+  and [`flatcar-install`][flatcar-install] overwrites it completely. Wipe it before the install: the installer
+  does not run on a node that still has a previous Flatcar install.
+
 ## The boot decision: pick your case
 
 How a node gets bootstrapped depends on the network â€” specifically, whether a [DHCP][dhcp] server exists and
@@ -207,4 +221,8 @@ is ready for the Distribution phase.
 [tftp]: https://datatracker.ietf.org/doc/html/rfc1350
 [flatcar-install]: https://www.flatcar.org/docs/latest/installing/bare-metal/installing-to-disk/
 [kubeadm]: https://kubernetes.io/docs/reference/setup-tools/kubeadm/
+[dns]: https://datatracker.ietf.org/doc/html/rfc1034
+[ntp]: https://datatracker.ietf.org/doc/html/rfc5905
+[flatcar-ntp]: https://www.flatcar.org/docs/latest/os-config/host-config/configuring-date-and-timezone/
+[keepalived]: https://www.keepalived.org/
 [compatibility-matrix]: COMPATIBILITY_MATRIX.md
