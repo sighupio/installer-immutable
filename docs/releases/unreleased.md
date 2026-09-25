@@ -12,9 +12,8 @@ None
 
 ## Bug Fixes 🐛
 
-- [[#24](https://github.com/sighupio/installer-immutable/pull/24)] kube-control-plane: fixed a bug that prevented creation of users with spaces in the username.
+TBD
 
 ## New features 🌟
 
 TBD
-

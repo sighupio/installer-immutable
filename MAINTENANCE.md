@@ -13,6 +13,16 @@ New releases are performed via CI pipelines. To trigger a new release:
 3. Tag a release candidate if needed, using the tag format `v<version>-rc.<rc numnber>` (for example, `v1.35.5-rc.0`).
 4. Tag the release with `v<version>` (for example, `v1.35.5`) to trigger the release.
 
+## Bumping a system extension
+
+To change the version of a system extension (for example etcd or containerd) for one or more Kubernetes versions, use the `bump-sysext` task. It reads the checksums from the `SHA256SUMS` file of the [installer-immutable-sysext](https://github.com/sighupio/installer-immutable-sysext/releases) release and updates the URLs and checksums in `immutable.yaml`:
+
+```sh
+mise run bump-sysext -n docs/releases/v1.36.4.md etcd v3.6.15 1.35.8 1.36.4
+```
+
+The `-n` option is optional. It also updates the package tables of the release notes. Update the other text of the release notes yourself.
+
 ## Lint & format
 
 > [!NOTE]

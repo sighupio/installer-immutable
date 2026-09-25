@@ -1,4 +1,15 @@
 ---
+# Stage the keepalived extension during an upgrade. The new binary activates at the reboot,
+# and not by a reload of the running service.
+- name: Align the keepalived system extension during upgrade
+  ansible.builtin.include_role:
+    name: sysext
+    tasks_from: align.yml
+  vars:
+    sysext_components:
+      - keepalived
+  when: upgrade | default(false) | bool
+
 - name: Copy check API server script
   when: keepalived_cluster | bool and keepalived_on_controlplane | bool
   ansible.builtin.template:

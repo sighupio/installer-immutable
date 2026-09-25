@@ -10,6 +10,8 @@
 yamlfmt = "0.21.0"
 "pipx:yamllint" = "1.38.0"
 "pipx:ansible-lint" = "26.4.0"
+# used by scripts/bump-sysext.sh
+yq = "4.53.6"
 
 [tasks.lint]
 description = "Run yamllint + ansible-lint (production profile, strict)"
@@ -33,3 +35,7 @@ depends = ["lint"]
 [tasks."test:argument-specs"]
 description = "Validate role argument specs against fixtures (localhost, no cluster)"
 run = "ansible-playbook tests/argument-specs/validate.yml"
+
+[tasks."bump-sysext"]
+description = "Bump a sysext in immutable.yaml with its release checksums (see scripts/bump-sysext.sh -h)"
+run = "scripts/bump-sysext.sh"
