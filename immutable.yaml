@@ -198,14 +198,14 @@ kubernetes:
     kubeletCsrApproverTag: v1.0
     sysext:
       - name: containerd
-        version: 2.3.5
+        version: 2.3.6
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.5/containerd-2.3.5-x86-64.raw
-            sha256: 42a2dc328ad3c579ad1822bc3305a26200674c2ab9ff9b50c7bbd442ad632184
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-x86-64.raw
+            sha256: 51f68df4f970a9b6b3b002372d588bf9044c8ec76704c54bd8e2b8e29ba683d8
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.5/containerd-2.3.5-arm64.raw
-            sha256: a7e8d11a0ecdca13c5cbe2d81d31543c2a1d0c295b0addd86fc6ede7969a70c0
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-arm64.raw
+            sha256: 91d2abd50c4e688b34d80f4573d6a3c34315af9a041bf681c1ee7e7b9dcd7615
       - name: kubernetes
         version: v1.35.8
         version_major_minor: v1.35
@@ -217,14 +217,14 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.8/kubernetes-v1.35.8-arm64.raw
             sha256: cdc4110165eabe9135ea83fd13a01c358ad82f6efdd89636d0eec6349448d2aa
       - name: etcd
-        version: v3.6.14
+        version: v3.6.15
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.14/etcd-v3.6.14-x86-64.raw
-            sha256: 2748bdfee70d6a2591b83f21c5b67ff3091ee1701d8673aad1d3c18bdc2f5072
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-x86-64.raw
+            sha256: 838867416722297aff496961c1770f5e3fb19bd11fc1648851d161f5a4d195c8
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.14/etcd-v3.6.14-arm64.raw
-            sha256: 2ba74fd83d5051e201e1c882e9bc75deda2f457559eeb517aade54919d3a3520
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-arm64.raw
+            sha256: 9e8eb6b55755f13347290655e4aaf430e51f1d88ea070dc3b53971fda73cc5a3
       - name: keepalived
         version: v2.4.3
         arch:
@@ -291,14 +291,14 @@ kubernetes:
     kubeletCsrApproverTag: v1.0
     sysext:
       - name: containerd
-        version: 2.3.5
+        version: 2.3.6
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.5/containerd-2.3.5-x86-64.raw
-            sha256: 42a2dc328ad3c579ad1822bc3305a26200674c2ab9ff9b50c7bbd442ad632184
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-x86-64.raw
+            sha256: 51f68df4f970a9b6b3b002372d588bf9044c8ec76704c54bd8e2b8e29ba683d8
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.5/containerd-2.3.5-arm64.raw
-            sha256: a7e8d11a0ecdca13c5cbe2d81d31543c2a1d0c295b0addd86fc6ede7969a70c0
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-arm64.raw
+            sha256: 91d2abd50c4e688b34d80f4573d6a3c34315af9a041bf681c1ee7e7b9dcd7615
       - name: kubernetes
         version: v1.36.4
         version_major_minor: v1.36
@@ -310,14 +310,14 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.36.4/kubernetes-v1.36.4-arm64.raw
             sha256: 115d258e533953a74db12981a1e0d33108aa123cd3fe79a9ea22e68467ff55e4
       - name: etcd
-        version: v3.6.14
+        version: v3.6.15
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.14/etcd-v3.6.14-x86-64.raw
-            sha256: 2748bdfee70d6a2591b83f21c5b67ff3091ee1701d8673aad1d3c18bdc2f5072
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-x86-64.raw
+            sha256: 838867416722297aff496961c1770f5e3fb19bd11fc1648851d161f5a4d195c8
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.14/etcd-v3.6.14-arm64.raw
-            sha256: 2ba74fd83d5051e201e1c882e9bc75deda2f457559eeb517aade54919d3a3520
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-arm64.raw
+            sha256: 9e8eb6b55755f13347290655e4aaf430e51f1d88ea070dc3b53971fda73cc5a3
       - name: keepalived
         version: v2.4.3
         arch:
