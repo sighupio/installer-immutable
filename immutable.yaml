@@ -189,7 +189,7 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_image.bin.bz2
             sha256: 53c92521a4c567debf66cbc18f64ab0fa98dc395b994bfcbbe8a86d31310c82e
-  1.35.8:
+  1.35.9:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.1"
     corednsImagePrefix: /coredns
@@ -207,15 +207,15 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-arm64.raw
             sha256: 91d2abd50c4e688b34d80f4573d6a3c34315af9a041bf681c1ee7e7b9dcd7615
       - name: kubernetes
-        version: v1.35.8
+        version: v1.35.9
         version_major_minor: v1.35
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.8/kubernetes-v1.35.8-x86-64.raw
-            sha256: c50323f2bc49a39c1dc46e89f1a507a7ece04df75301779712b6e55bd1648069
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.9/kubernetes-v1.35.9-x86-64.raw
+            sha256: 36f1ad4df14f0251b9361170a3919174e1640673b8dc31b0803291a008458647
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.8/kubernetes-v1.35.8-arm64.raw
-            sha256: cdc4110165eabe9135ea83fd13a01c358ad82f6efdd89636d0eec6349448d2aa
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.9/kubernetes-v1.35.9-arm64.raw
+            sha256: 6fd6086faeb76779f51e3d97bc5bf9e7783f99e5163a5f48ebf49fa8a3096bbf
       - name: etcd
         version: v3.6.15
         arch:
@@ -235,14 +235,14 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.4.3/keepalived-v2.4.3-arm64.raw
             sha256: 06a3afc97f005e7adf07d0c61ebe0f027f8a5fa93ece268b164b1bbffc383d85
       - name: kubeadm
-        version: v1.35.8
+        version: v1.35.9
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.8/kubeadm-v1.35.8-x86-64.raw
-            sha256: 585c3fb74b69d0335269d39e824f9757187a9bb0224c93b1efe8b0d608a5d8c8
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.9/kubeadm-v1.35.9-x86-64.raw
+            sha256: 28ec20a8e3ee963ff7945713d54f3fd649cd49867eb8426d915f4b485f997426
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.8/kubeadm-v1.35.8-arm64.raw
-            sha256: 754fe51db4244db2c3bc88f5df9b048758054b87c2d1e669ec2729b3ec1925ed
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.9/kubeadm-v1.35.9-arm64.raw
+            sha256: c79ae91a1bb9335b9348f5bd8643dc65f67815d7c2d7735c70dcb9b688b9496d
       - name: flatcar-python
         version: 4757.2.0
         arch:
@@ -282,7 +282,7 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.0/flatcar_production_image.bin.bz2
             sha256: e4b5b789f73d2d39c3dede35337b435fd3aa44f469372ab3e15727a68085a9cb
-  1.36.4:
+  1.36.5:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.2"
     corednsImagePrefix: /coredns
@@ -300,15 +300,15 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-arm64.raw
             sha256: 91d2abd50c4e688b34d80f4573d6a3c34315af9a041bf681c1ee7e7b9dcd7615
       - name: kubernetes
-        version: v1.36.4
+        version: v1.36.5
         version_major_minor: v1.36
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.36.4/kubernetes-v1.36.4-x86-64.raw
-            sha256: ad73e350edef61334c8e00bff72f73d24f91ab7ce78625a2976e2ebce1e72b15
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.36.5/kubernetes-v1.36.5-x86-64.raw
+            sha256: 3598ef832c6c928ac440cd7d064f565a7789195551ebba61ba512ae2f73e6f69
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.36.4/kubernetes-v1.36.4-arm64.raw
-            sha256: 115d258e533953a74db12981a1e0d33108aa123cd3fe79a9ea22e68467ff55e4
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.36.5/kubernetes-v1.36.5-arm64.raw
+            sha256: ce2374afb26f89fb029a9f398a2b32d605358b035cad52da70ce04f4dbee1efa
       - name: etcd
         version: v3.6.15
         arch:
@@ -328,14 +328,14 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/keepalived-v2.4.3/keepalived-v2.4.3-arm64.raw
             sha256: 06a3afc97f005e7adf07d0c61ebe0f027f8a5fa93ece268b164b1bbffc383d85
       - name: kubeadm
-        version: v1.36.4
+        version: v1.36.5
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.36.4/kubeadm-v1.36.4-x86-64.raw
-            sha256: f8cdec39805b35704d0f8e87edf20754fa4cd1fdc6f7da3a5f3e05f6b8d6e3ec
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.36.5/kubeadm-v1.36.5-x86-64.raw
+            sha256: ebe748eab8bcf575e64d543c437572a1849059d6549b8306ae9f2ac40b93b9ea
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.36.4/kubeadm-v1.36.4-arm64.raw
-            sha256: 01fe96cb2c3c2c9a405ef98718e4254c86485e234e86a8b61569f95e7607d43b
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.36.5/kubeadm-v1.36.5-arm64.raw
+            sha256: c67708931b41df055a121ed0a15fbdf7635849e77fbde877cea64d4e16a819db
       - name: flatcar-python
         version: 4757.2.0
         arch:
