@@ -1,0 +1,40 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# One case of the validation: case.nodes, the hosts to benchmark, all of them control
+# planes; case.output, case.version and case.etcd_on_control_plane when the case sets
+# them; case.etcd, the etcd group; case.names, what the error names, empty when the
+# inputs are valid.
+- name: Validate the inputs of the case
+  block:
+    - name: Forget the failure of the case before
+      ansible.builtin.set_fact:
+        cis_validation_error: ""
+
+    - name: Run the validation
+      ansible.builtin.include_tasks: ../../tasks/validate.yml
+      vars:
+        cis_output_dir: "{{ case.output | default('/srv/demo/.furyctl/demo/cis-benchmark/20260101T000000Z') }}"
+        kubernetes_version: "{{ case.version | default('1.35.5') }}"
+        cis_nodes: "{{ case.nodes }}"
+        cis_groups:
+          control_plane: "{{ case.nodes }}"
+          etcd: "{{ case.etcd | default([]) }}"
+          nodes: []
+        cis_etcd_on_control_plane: "{{ case.etcd_on_control_plane | default(true) }}"
+  rescue:
+    - name: Record the failure of the case
+      ansible.builtin.set_fact:
+        cis_validation_error: "{{ ansible_failed_result.msg | default('') }}"
+
+- name: Assert the outcome of the case
+  ansible.builtin.assert:
+    that:
+      - (cis_validation_error | length > 0) == (case.names | length > 0)
+      - case.names in cis_validation_error
+    fail_msg: >-
+      {{ case }} gave '{{ cis_validation_error }}', expected
+      {{ ('an error naming ' ~ case.names) if case.names else 'no error' }}.
+    quiet: true

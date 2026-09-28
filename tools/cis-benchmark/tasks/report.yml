@@ -1,0 +1,117 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Input: cis_output_dir with raw/<short>.json, cis_report_nodes (host, short, role,
+# targets, error), the resolved benchmark, the run metadata and the vars files.
+# Output: nodes/<short>.md, SUMMARY.md and cis_report, which the fail policy reads.
+# cis_shaped_nodes is a step towards cis_report, not an output.
+- name: Find the raw results
+  ansible.builtin.find:
+    paths: "{{ cis_output_dir }}/raw"
+    patterns: "*.json"
+  register: cis_raw_files
+
+- name: Read the raw results
+  ansible.builtin.slurp:
+    src: "{{ cis_output_dir }}/raw/{{ item.short }}.json"
+  loop: "{{ cis_report_nodes }}"
+  loop_control:
+    label: "{{ item.short }}"
+  when:
+    - not item.error
+    - cis_output_dir ~ '/raw/' ~ item.short ~ '.json' in cis_raw_files.files | map(attribute='path')
+  register: cis_raw_results
+
+# Only the fields named here reach the Markdown. audit, audit_env, audit_config and
+# actual_value can carry process arguments and environment: they stay in the raw JSON.
+- name: Shape the result of every node
+  ansible.builtin.set_fact:
+    cis_shaped_nodes: >-
+      {%- set counts = ['pass', 'fail', 'warn', 'info'] -%}
+      {%- set kinds = {'FAIL': 'failures', 'WARN': 'warnings'} -%}
+      {%- set nodes = [] -%}
+      {%- for read in cis_raw_results.results -%}
+      {%- set node = read.item -%}
+      {%- set raw = (read.content | b64decode | from_json) if read.content is defined else {} -%}
+      {%- set entry = {
+          'host': node.host, 'short': node.short, 'role': node.role, 'targets': node.targets,
+          'error': node.error if node.error else ('' if raw else 'no result was collected from this host'),
+          'sections': [], 'failures': [], 'warnings': [], 'skips': [],
+          'totals': {'pass': 0, 'fail': 0, 'warn': 0, 'info': 0}} -%}
+      {%- for control in raw.Controls | default([]) -%}
+      {%- set section = {
+          'target': control.node_type, 'id': control.id, 'text': control.text,
+          'pass': control.total_pass, 'fail': control.total_fail,
+          'warn': control.total_warn, 'info': control.total_info} -%}
+      {%- set _ = entry.sections.append(section) -%}
+      {%- for count in counts -%}
+      {%- set _ = entry.totals.update({count: entry.totals[count] + section[count]}) -%}
+      {%- endfor -%}
+      {%- for group in control.tests | default([]) -%}
+      {%- for check in group.results | default([]) -%}
+      {%- set finding = {
+          'id': check.test_number, 'text': check.test_desc | default(''),
+          'remediation': check.remediation | default('') | trim} -%}
+      {%- if check.status in kinds -%}
+      {%- set _ = entry[kinds[check.status]].append(finding) -%}
+      {%- elif check.status == 'INFO' and check.type | default('') == 'skip' -%}
+      {%- set _ = entry.skips.append(finding) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {%- set _ = nodes.append(entry) -%}
+      {%- endfor -%}
+      {{ nodes }}
+
+# A check is listed once, with the nodes that have it, in the numeric order of its
+# identifier: 1.2.10 comes after 1.2.9.
+- name: Gather the findings of the nodes for the summary
+  ansible.builtin.set_fact:
+    cis_report: >-
+      {%- set findings = {'failures': {}, 'warnings': {}} -%}
+      {%- for node in cis_shaped_nodes -%}
+      {%- for kind in findings -%}
+      {%- for finding in node[kind] -%}
+      {%- if finding.id not in findings[kind] -%}
+      {%- set order = [] -%}
+      {%- for part in finding.id.split('.') -%}
+      {%- set _ = order.append('%05d' % (part | int)) -%}
+      {%- endfor -%}
+      {%- set _ = findings[kind].update({finding.id: finding | combine({
+          'nodes': [], 'order': order | join('.')})}) -%}
+      {%- endif -%}
+      {%- set _ = findings[kind][finding.id].nodes.append(node.short) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {%- set totals = cis_shaped_nodes | rejectattr('error') | map(attribute='totals') | list -%}
+      {{ {
+        'nodes': cis_shaped_nodes,
+        'failures': findings.failures.values() | sort(attribute='order'),
+        'warnings': findings.warnings.values() | sort(attribute='order'),
+        'totals': {
+          'pass': totals | map(attribute='pass') | sum,
+          'fail': totals | map(attribute='fail') | sum,
+          'warn': totals | map(attribute='warn') | sum,
+          'info': totals | map(attribute='info') | sum},
+        'verdict': {
+          'fail': totals | map(attribute='fail') | sum,
+          'lost': cis_shaped_nodes | selectattr('error') | list | length}} }}
+
+- name: Render the node reports
+  ansible.builtin.template:
+    src: "{{ cis_tool_dir }}/templates/node-report.md.j2"
+    dest: "{{ cis_output_dir }}/nodes/{{ item.short }}.md"
+    mode: "0600"
+  loop: "{{ cis_report.nodes }}"
+  loop_control:
+    label: "{{ item.short }}"
+
+- name: Render the summary
+  ansible.builtin.template:
+    src: "{{ cis_tool_dir }}/templates/summary.md.j2"
+    dest: "{{ cis_output_dir }}/SUMMARY.md"
+    mode: "0600"
