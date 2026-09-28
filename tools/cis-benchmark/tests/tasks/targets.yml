@@ -1,0 +1,28 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# One case of the targets: case.groups, case.etcd_on_control_plane and case.expected,
+# which maps every host to its role and targets.
+- name: Compute the targets of the case
+  ansible.builtin.include_tasks: ../../tasks/targets.yml
+  vars:
+    cis_groups: "{{ {'control_plane': [], 'etcd': [], 'nodes': []} | combine(case.groups) }}"
+    cis_etcd_on_control_plane: "{{ case.etcd_on_control_plane }}"
+
+- name: Assert the targets of the case
+  ansible.builtin.assert:
+    that:
+      - cis_node_info.keys() | sort == case.expected.keys() | sort
+      - cis_node_info[item.key].role == item.value.role
+      - cis_node_info[item.key].targets | join(',') == item.value.targets
+      - cis_node_info[item.key].short == item.key.split('.') | first
+      - "'policies' not in cis_node_info[item.key].targets"
+    fail_msg: >-
+      {{ item.key }} got {{ cis_node_info[item.key] | default('nothing') }}, expected
+      {{ item.value }}.
+    quiet: true
+  loop: "{{ case.expected | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"

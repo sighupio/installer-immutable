@@ -1,0 +1,35 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# kube-bench is downloaded on localhost only, once per architecture of the inventory. The
+# cache sits next to the run folders, so a tarball with the pinned checksum is reused, and
+# an operator without network access can put it there beforehand.
+- name: Create the download cache
+  ansible.builtin.file:
+    path: "{{ cis_downloads_dir }}/{{ item }}"
+    state: directory
+    mode: "0700"
+  loop: "{{ [''] + cis_archs | map('regex_replace', '^', cis_kube_bench_package) | list }}"
+
+- name: Download the kube-bench release and verify its checksum
+  ansible.builtin.get_url:
+    url: "{{ cis_kube_bench_release_url }}/v{{ cis_kube_bench_version }}/{{ cis_tarball }}"
+    dest: "{{ cis_downloads_dir }}/{{ cis_tarball }}"
+    checksum: "sha256:{{ cis_kube_bench_sha256[item] }}"
+    mode: "0600"
+  loop: "{{ cis_archs }}"
+  loop_control:
+    label: "{{ cis_tarball }}"
+  vars:
+    cis_tarball: "{{ cis_kube_bench_package }}{{ item }}.tar.gz"
+
+- name: Extract the kube-bench binary
+  ansible.builtin.unarchive:
+    src: "{{ cis_downloads_dir }}/{{ cis_kube_bench_package }}{{ item }}.tar.gz"
+    dest: "{{ cis_downloads_dir }}/{{ cis_kube_bench_package }}{{ item }}"
+    include:
+      - kube-bench
+    mode: "0700"
+  loop: "{{ cis_archs }}"
