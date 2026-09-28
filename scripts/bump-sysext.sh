@@ -15,8 +15,8 @@ Sets <name> to <version> for each <kubernetes-version> in immutable.yaml. The UR
 sha256 checksums come from the installer-immutable-sysext release "<name>-<version>".
 With -n, also updates the package tables of the release notes for these Kubernetes versions.
 
-  bump-sysext.sh etcd v3.6.15 1.35.8 1.36.4
-  bump-sysext.sh -n docs/releases/v1.36.4.md containerd 2.3.6 1.35.8 1.36.4
+  bump-sysext.sh etcd v3.6.15 1.35.9 1.36.5
+  bump-sysext.sh -n docs/releases/v1.36.5.md containerd 2.3.6 1.35.9 1.36.5
 USAGE
 }
 
