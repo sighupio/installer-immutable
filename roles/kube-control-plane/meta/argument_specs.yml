@@ -99,11 +99,11 @@ argument_specs:
       kubernetes_cloud_provider:
         type: str
         required: false
-        description: cloud-provider flag for kubelet and controller-manager; apiserver only when set and version < 1.33.
+        description: cloud-provider flag for kubelet and controller-manager.
       kubernetes_cloud_config:
         type: str
         required: false
-        description: cloud-config path and extraVolumes mount, rendered when non-empty.
+        description: controller-manager cloud-config path and extraVolumes mount, rendered when non-empty.
       kubernetes_apiserver_certSANs:
         type: list
         required: false
@@ -155,31 +155,44 @@ argument_specs:
       oidc_issuer_url:
         type: str
         required: false
-        description: OIDC issuer URL; gates the whole OIDC apiserver block when non-empty.
+        description: OIDC issuer URL; when non-empty, renders the AuthenticationConfiguration and the apiserver authentication-config flag.
       oidc_client_id:
         type: str
         required: false
-        description: OIDC client id rendered within the OIDC block.
+        description: OIDC client id, the first accepted audience in the AuthenticationConfiguration.
       oidc_ca_file:
         type: path
         required: false
-        description: CA file for the apiserver oidc-ca-file flag.
+        description: CA file on the node; its content is inlined as certificateAuthority when it differs from oidc_ca_file_default.
+      oidc_ca_file_default:
+        type: path
+        required: false
+        description: System CA bundle already trusted by the apiserver; oidc_ca_file equal to it means no certificateAuthority.
       oidc_username_claim:
         type: str
         required: false
-        description: JWT claim used as the username (oidc-username-claim).
+        description: JWT claim used as the username (claimMappings.username.claim).
       oidc_username_prefix:
         type: str
         required: false
-        description: Prefix prepended to OIDC usernames (oidc-username-prefix).
+        description: 'Prefix prepended to OIDC usernames (claimMappings.username.prefix); "-" disables it.'
       oidc_groups_claim:
         type: str
         required: false
-        description: JWT claim used for groups (oidc-groups-claim).
+        description: JWT claim used for groups (claimMappings.groups.claim).
       oidc_groups_prefix:
         type: str
         required: false
-        description: Prefix prepended to OIDC groups (oidc-groups-prefix).
+        description: Prefix prepended to OIDC groups (claimMappings.groups.prefix).
+      oidc_extra_audiences:
+        type: list
+        elements: str
+        required: false
+        description: Additional accepted token audiences besides oidc_client_id (audienceMatchPolicy MatchAny).
+      kubernetes_remote_authentication_config:
+        type: path
+        required: false
+        description: AuthenticationConfiguration path on the node; its directory is mounted into the apiserver.
       kubeadm_skip_phases:
         type: list
         required: false

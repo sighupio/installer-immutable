@@ -55,6 +55,33 @@
     mode: "0644"
   when: kubernetes_encryption_config != ""
 
+- name: Load OIDC CA certificate content
+  ansible.builtin.slurp:
+    src: "{{ oidc_ca_file }}"
+  register: oidc_ca_content
+  when: oidc_issuer_url != "" and oidc_ca_file != oidc_ca_file_default
+
+# A bind mount of a file stays pinned to its old inode when this task replaces it, so the
+# container never sees later changes. Mounting the directory avoids that.
+# Kubernetes uses the same trick for ConfigMap and Secret volumes.
+- name: Ensuring dedicated OIDC config directory exists
+  ansible.builtin.file:
+    path: "{{ kubernetes_remote_authentication_config | dirname }}"
+    owner: root
+    group: root
+    mode: "0700"
+    state: directory
+  when: oidc_issuer_url != ""
+
+- name: Ensuring authentication config is present on machine
+  ansible.builtin.template:
+    src: authentication-config.yml.j2
+    dest: "{{ kubernetes_remote_authentication_config }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: oidc_issuer_url != ""
+
 - name: Writing kubeadm.yml configuration file
   ansible.builtin.template:
     src: kubeadm.yml.j2
