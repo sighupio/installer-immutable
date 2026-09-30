@@ -46,11 +46,18 @@ etcd_cert_file: "/etc/etcd/pki/apiserver-etcd-client.crt"
 ## OIDC
 oidc_issuer_url: ""
 oidc_client_id: ""
-oidc_ca_file: /etc/ssl/certs/ca-certificates.crt
+oidc_ca_file_default: /etc/ssl/certs/ca-certificates.crt
+# certificateAuthority is only set in authentication-config.yml.j2 when this differs from
+# oidc_ca_file_default; at the default, the apiserver already trusts the system CA bundle.
+oidc_ca_file: "{{ oidc_ca_file_default }}"
 oidc_username_claim: email
 oidc_username_prefix: "oidc:"
 oidc_groups_claim: groups
 oidc_groups_prefix: "oidc:"
+# Additional accepted token audiences besides oidc_client_id, listed alongside it under
+# AuthenticationConfiguration's jwt[].issuer.audiences (audienceMatchPolicy: MatchAny).
+oidc_extra_audiences: []
+kubernetes_remote_authentication_config: /etc/kubernetes/oidc/authentication-config.yaml
 # FIXME: better name for this variable? `kubernetes_upgrade` for example
 upgrade: false
 ## Controller Manager
