@@ -16,6 +16,16 @@
   when:
     - sysext_comp_stat.stat.exists
     - sysext_comp_stat.stat.islnk
+  # An ansible task runs in a non-login shell, so it gets neither the systemd
+  # DefaultEnvironment nor /etc/profile.env. Without this the downloads below ignore
+  # spec.infrastructure.proxy, and a node with no direct egress cannot upgrade.
+  environment:
+    http_proxy: "{{ http_proxy | default('') }}"
+    https_proxy: "{{ https_proxy | default('') }}"
+    no_proxy: "{{ no_proxy | default('') }}"
+    HTTP_PROXY: "{{ http_proxy | default('') }}"
+    HTTPS_PROXY: "{{ https_proxy | default('') }}"
+    NO_PROXY: "{{ no_proxy | default('') }}"
   block:
     - name: Resolve active vs target file for {{ sysext_comp_name }}
       ansible.builtin.set_fact:
