@@ -19,13 +19,15 @@
   # An ansible task runs in a non-login shell, so it gets neither the systemd
   # DefaultEnvironment nor /etc/profile.env. Without this the downloads below ignore
   # spec.infrastructure.proxy, and a node with no direct egress cannot upgrade.
+  # 'or omit' drops a variable that is unset or empty, so a proxy that the session
+  # already has is not replaced by an empty value.
   environment:
-    http_proxy: "{{ http_proxy | default('') }}"
-    https_proxy: "{{ https_proxy | default('') }}"
-    no_proxy: "{{ no_proxy | default('') }}"
-    HTTP_PROXY: "{{ http_proxy | default('') }}"
-    HTTPS_PROXY: "{{ https_proxy | default('') }}"
-    NO_PROXY: "{{ no_proxy | default('') }}"
+    http_proxy: "{{ http_proxy | default('') or omit }}"
+    https_proxy: "{{ https_proxy | default('') or omit }}"
+    no_proxy: "{{ no_proxy | default('') or omit }}"
+    HTTP_PROXY: "{{ http_proxy | default('') or omit }}"
+    HTTPS_PROXY: "{{ https_proxy | default('') or omit }}"
+    NO_PROXY: "{{ no_proxy | default('') or omit }}"
   block:
     - name: Resolve active vs target file for {{ sysext_comp_name }}
       ansible.builtin.set_fact:
