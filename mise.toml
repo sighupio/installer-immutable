@@ -12,6 +12,10 @@ yamlfmt = "0.21.0"
 "pipx:ansible-lint" = "26.4.0"
 # used by scripts/bump-sysext.sh
 yq = "4.53.6"
+# tools for the role documentation (tasks docs and docs-check)
+"pipx:ansible-docsmith" = "2.2.0"
+node = "24"
+"npm:markdownlint-cli2" = "0.23.3"
 
 [tasks.lint]
 description = "Run yamllint + ansible-lint (production profile, strict)"
@@ -39,3 +43,17 @@ run = "ansible-playbook tests/argument-specs/validate.yml"
 [tasks."bump-sysext"]
 description = "Bump a sysext in immutable.yaml with its release checksums (see scripts/bump-sysext.sh -h)"
 run = "scripts/bump-sysext.sh"
+
+[tasks.docs]
+description = "Generate the variable reference of every role README from meta/argument_specs.yml"
+run = "ansible-docsmith generate . --no-defaults --template-readme docs/templates/role-readme.md.j2"
+
+[tasks."docs-check"]
+description = "Check that every role README is up to date and follows the Markdown rules, writing nothing"
+run = [
+  "ansible-docsmith validate . --strict",
+  "ansible-docsmith generate . --check --no-defaults --template-readme docs/templates/role-readme.md.j2",
+  'markdownlint-cli2 "roles/*/README.md"',
+  # a README created by the generator keeps its placeholder text until someone writes the role description
+  "! grep -n FIXME roles/*/README.md",
+]

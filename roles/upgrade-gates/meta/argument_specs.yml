@@ -4,82 +4,98 @@ argument_specs:
   # playbooks invoke them (include_role tasks_from: <name>.yml). ansible-core does
   # not strip the extension when matching the arg spec, so the key must be exact.
   fetch_admin_conf.yml:
-    short_description: Fetch super-admin.conf from a control-plane node.
+    short_description: Fetch super-admin.conf from a control-plane node to the furyctl host.
     description: >-
-      Fetches /etc/kubernetes/super-admin.conf from the first control_plane host for the
-      controller-side kubectl gates. Consumes only the inventory group; no role arguments.
+      Copies C(/etc/kubernetes/super-admin.conf) from the first node of the inventory group C(control_plane) to
+      C(./super-admin.conf) on the furyctl host, once per run, for the checks that run C(kubectl) on the furyctl
+      host. The run fails when the file cannot be fetched.
     options: {}
   infra_preflight.yml:
-    short_description: Pre-drain infrastructure preflight gate.
+    short_description: Check the infrastructure of the node before the upgrade drains it.
     description: >-
-      Asserts enough free disk to stage the sysext, each target .raw is reachable, and both
-      A/B OS partitions exist for rollback, before any node is drained.
+      Fails when the root file system of the node has less free space than O(node_upgrade_min_free_bytes), when the
+      C(.raw) image of a target of O(sysext_targets) does not answer an HTTP C(HEAD) request, or when the node lacks
+      one of the two A/B operating system partitions, C(USR-A) and C(USR-B), that a rollback needs. The checks change
+      nothing on the node.
     options:
       node_upgrade_min_free_bytes:
         type: int
         required: false
-        description: Minimum free bytes on / required to stage the sysext .raw.
+        description: Smallest free space, in bytes, that the root file system of the node needs to stage the system extensions.
       sysext_targets:
         type: dict
         required: false
         description: >-
-          Caller-injected map of sysext upgrade targets; HEAD-checked per arch URL only when
-          defined. Undefined skips the reachability loop.
+          Targets of the system extensions, in the format of the C(sysext_targets) variable of the sysext role. The
+          role checks that the image of every target for the architecture of the node is reachable; when unset, it
+          skips that check.
       sysext_arch:
         type: str
         required: false
-        description: sysext architecture used to index the per-target artifact URL.
+        description: >-
+          Architecture of the system extensions of the node, the key into the C(arch) map of each target. Defaults to
+          O(node_arch) or, when that is not set, to V(arm64) on an C(aarch64) node and to V(x86-64) otherwise.
         choices: ["x86-64", "arm64"]
       node_arch:
         type: str
         required: false
         choices: ["x86-64", "arm64"]
-        description: >-
-          Rendered node architecture; consumed only inside the sysext_arch default expression,
-          which supplies its own fallback.
+        description: Architecture of the node. When set, it is the default of O(sysext_arch).
   sanity.yml:
-    short_description: Post-upgrade sanity gate.
+    short_description: Check the node after its upgrade.
     description: >-
-      Asserts the node runs the target kubelet/kubeadm/kubectl and containerd, the kubernetes
-      sysext overlay is merged, and the node reports Ready.
+      Fails unless the kubelet, C(kubeadm) and C(kubectl) of the node report O(kubernetes_version), containerd
+      reports the target version of its system extension when O(sysext_targets) gives one, the kubernetes system
+      extension is merged, and the node is Ready. The role waits for the node to be Ready with C(kubectl) on the
+      furyctl host.
     options:
       kubernetes_version:
         type: str
         required: true
-        description: Target Kubernetes version the node binaries must match (furyctl-injected).
+        description: Target Kubernetes version that the kubelet, C(kubeadm) and C(kubectl) of the node must report.
       kubectl_bin:
         type: str
         required: false
-        description: kubectl binary for the delegated node Ready wait.
+        description: Path of C(kubectl) on the furyctl host, with which the role waits for the node to be Ready.
       kubernetes_kubeconfig_path:
         type: path
         required: false
-        description: Directory holding super-admin.conf for the kubectl wait --kubeconfig.
+        description: >-
+          Directory on the furyctl host, ending with C(/), that holds C(super-admin.conf), the kubeconfig file of
+          C(kubectl). The C(fetch_admin_conf.yml) entry point always writes the file as C(./super-admin.conf), whatever
+          the value of this variable is.
       kubernetes_hostname:
         type: str
         required: false
-        description: Kubernetes node name targeted by kubectl wait.
+        description: Name of the Kubernetes node. Defaults to the fully qualified domain name of the node.
       sysext_targets:
         type: dict
         required: false
         description: >-
-          Caller-injected map of sysext upgrade targets; only sysext_targets['containerd'].version
-          is read, and its clause is skipped when absent.
+          Targets of the system extensions, in the format of the C(sysext_targets) variable of the sysext role. The
+          role reads only the C(version) of C(containerd), and skips the containerd check when it is missing.
   cluster_health_gate.yml:
-    short_description: Pre-upgrade cluster-health gate.
+    short_description: Check the health of the cluster before the upgrade touches any node.
     description: >-
-      Run once before any node is touched: asserts the API server is reachable and all nodes
-      Ready, the cluster is uniform or resumable toward the target, and etcd is healthy.
+      Fails unless the API server answers and every node is Ready; the nodes run one Kubernetes version, or two
+      versions of which one is O(kubernetes_version), as after an interrupted upgrade that can resume; and every
+      member of the etcd cluster is healthy. The C(kubectl) commands run on the furyctl host; the etcd check runs on
+      the node, with the C(etcdctl) profile that the etcd role writes.
     options:
       kubernetes_version:
         type: str
         required: true
-        description: Target Kubernetes version used to judge a resumable partial upgrade.
+        description: >-
+          Target Kubernetes version of the upgrade. A cluster whose nodes run two versions passes only when one of
+          them is this one.
       kubectl_bin:
         type: str
         required: false
-        description: Controller-side kubectl for the delegated get-nodes checks.
+        description: Path of C(kubectl) on the furyctl host, with which the role reads the nodes of the cluster.
       kubernetes_kubeconfig_path:
         type: path
         required: false
-        description: Directory holding super-admin.conf for the kubectl --kubeconfig.
+        description: >-
+          Directory on the furyctl host, ending with C(/), that holds C(super-admin.conf), the kubeconfig file of
+          C(kubectl). The C(fetch_admin_conf.yml) entry point always writes the file as C(./super-admin.conf), whatever
+          the value of this variable is.

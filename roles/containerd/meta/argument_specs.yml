@@ -1,89 +1,152 @@
 ---
 argument_specs:
   main:
-    short_description: Install and configure containerd for the immutable cluster.
-    description: >-
-      Renders /etc/containerd/config.toml, systemd http-proxy drop-in and per-registry
-      certs.d/hosts.toml, pinning the sandbox (pause) image and registry auth/mirrors.
+    short_description: Configure containerd, the container runtime of the node.
+    description:
+      - >-
+        Writes the containerd configuration file, a systemd drop-in with the proxy settings of the containerd service
+        and one configuration file per registry of O(containerd_registry_configs), and configures C(crictl) to use
+        containerd. When the configuration file, the drop-in or a registry configuration changes, the role restarts
+        containerd and waits until containerd answers C(crictl) requests.
+      - >-
+        During an upgrade, the role stages the new containerd system extension and neither restarts containerd nor
+        reboots the node. The new version and the new configuration take effect when the node reboots: the
+        C(os_reboot.yml) entry point of the os-upgrade role reboots it when C(os_update_reboot) is V(true) and an
+        operating system update or a system extension was staged. When nothing was staged, a configuration change takes
+        effect only at the next restart of containerd.
     options:
       kubernetes_image_registry:
         type: str
         required: false
+        default: registry.sighup.io/fury/on-premises
         description: >-
-          Image registry used to derive the sandbox image; furyctl always renders it from
-          immutable.yaml (or the user's advanced.registry). The user's
-          spec.kubernetes.advanced.registry from the furyctl inventory overrides it.
+          Registry of the sandbox (pause) image. The default of O(containerd_sandbox_image) is built from it, so a
+          custom registry also changes where the sandbox image comes from. furyctl always sets it: to
+          C(spec.kubernetes.advanced.registry) of the cluster configuration when that field is set, otherwise to the
+          C(imageRegistry) of the Kubernetes version in C(immutable.yaml), the versions file of the installer.
       containerd_sandbox_image:
         type: str
         required: false
         description: >-
-          Pinned sandbox (pause) image written unconditionally into config.toml;
-          defaults to registry + tag so a custom registry redirects it.
+          Sandbox (pause) image that containerd pins in its configuration. Defaults to O(kubernetes_image_registry),
+          followed by C(/pause:) and O(containerd_sandbox_tag).
       containerd_sandbox_tag:
         type: str
         required: true
         description: >-
-          Tag for the sandbox (pause) image; has no default in the role and is
-          supplied externally (furyctl inventory / immutable.yaml).
+          Tag of the sandbox (pause) image, used to build the default of O(containerd_sandbox_image). The role has no
+          default for it: furyctl sets it from the versions file of the installer, C(immutable.yaml).
       containerd_cfg_dir:
         type: path
         required: false
-        description: Config directory for config.toml and the certs.d registry hosts tree.
+        default: /etc/containerd
+        description:
+          - >-
+            Directory of the containerd configuration. The role writes C(config.toml) there, and one
+            C(certs.d/<registry>/hosts.toml) file for each registry of O(containerd_registry_configs).
+          - >-
+            The containerd configuration always tells containerd to read the registry configurations from
+            C(/etc/containerd/certs.d), whatever the value of this variable is.
       containerd_systemd_dir:
         type: path
         required: false
-        description: Destination directory for the containerd http-proxy.conf systemd drop-in.
+        default: /etc/systemd/system/containerd.service.d
+        description: >-
+          Directory of the systemd drop-ins of the containerd service. The role writes the proxy drop-in
+          C(http-proxy.conf) there.
       containerd_storage_dir:
         type: path
         required: false
-        description: Persistent root directory written as root in config.toml.
+        default: /var/lib/containerd
+        description: Directory where containerd keeps its persistent data (C(root) in the containerd configuration).
       containerd_state_dir:
         type: path
         required: false
-        description: Runtime state directory written as state in config.toml.
+        default: /run/containerd
+        description: Directory where containerd keeps its runtime state (C(state) in the containerd configuration).
       containerd_oom_score:
         type: int
         required: false
-        description: oom_score value set in config.toml.
+        default: 0
+        description: OOM score adjustment of the containerd process (C(oom_score) in the containerd configuration).
       containerd_grpc_max_recv_message_size:
         type: int
         required: false
-        description: gRPC max_recv_message_size set in config.toml.
+        default: 16777216
+        description: >-
+          Largest gRPC message, in bytes, that containerd accepts (C(max_recv_message_size) in the C(grpc) section of the
+          containerd configuration).
       containerd_grpc_max_send_message_size:
         type: int
         required: false
-        description: gRPC max_send_message_size set in config.toml.
+        default: 16777216
+        description: >-
+          Largest gRPC message, in bytes, that containerd sends (C(max_send_message_size) in the C(grpc) section of the
+          containerd configuration).
       containerd_debug_level:
         type: str
         required: false
-        description: Debug log level set in config.toml.
+        default: info
+        description: Log level of containerd (C(level) in the C(debug) section of the containerd configuration).
       containerd_metrics_address:
         type: str
         required: false
-        description: Metrics listen address in config.toml; empty disables the metrics endpoint.
+        default: ""
+        description: >-
+          Address on which containerd serves its metrics, as C(host:port) (C(address) in the C(metrics) section of the
+          containerd configuration). The empty default disables the metrics endpoint.
       containerd_metrics_grpc_histogram:
         type: bool
         required: false
-        description: Enable gRPC histogram metrics in config.toml.
+        default: false
+        description: >-
+          When V(true), containerd adds histograms of its gRPC requests to its metrics (C(grpc_histogram) in the
+          C(metrics) section of the containerd configuration).
       containerd_max_container_log_line_size:
         type: int
         required: false
-        description: Runtime max_container_log_line_size set in config.toml.
+        default: 16384
+        description: >-
+          Longest container log line, in bytes; containerd splits a longer line into several lines
+          (C(max_container_log_line_size) in the containerd configuration).
       containerd_device_ownership_from_security_context:
         type: bool
         required: false
-        description: Runtime device_ownership_from_security_context flag in config.toml.
+        default: false
+        description: >-
+          When V(true), the devices of a container belong to the user and group of the security context of the
+          container instead of to the root user (C(device_ownership_from_security_context) in the containerd
+          configuration).
       containerd_registry_configs:
         type: list
         required: false
-        description: >-
-          Per-registry auth and mirror entries iterated to create certs.d dirs and
-          render hosts.toml; each item has registry, username, password,
-          insecure_skip_verify and mirror_endpoint.
+        default: []
+        description:
+          - >-
+            Registries for which containerd uses credentials, mirrors or no TLS verification. For each entry, the
+            role writes C(<containerd_cfg_dir>/certs.d/<registry>/hosts.toml) and adds the credentials to the
+            containerd configuration. The role deletes every directory under C(<containerd_cfg_dir>/certs.d) that
+            does not match a registry of the list, including directories that the role did not create.
+          - >-
+            Each entry is a map with these keys: C(registry), the name of the registry as images refer to it
+            (required); C(username) and C(password), the credentials containerd uses for the registry, written only
+            when both are set; C(insecure_skip_verify), V(true) to skip the verification of the TLS certificate of
+            the registry; C(mirror_endpoint), a list of URLs of mirrors from which containerd
+            pulls and resolves the images of the registry. For example:
+          - |-
+            ```yaml
+            - registry: "upstream-registry.example.com"
+              username: "admin"
+              password: "password"
+              insecure_skip_verify: true
+              mirror_endpoint:
+                - "http://myregistry:8080"
+            ```
       upgrade:
         type: bool
         required: false
         description: >-
-          Caller-passed run toggle. When true, stage the containerd sysext during
-          upgrade and skip the in-band restart and CRI-ready wait; the reboot applies
-          the new binary and config together.
+          V(true) when the role runs during a cluster upgrade. The role then stages the new containerd system
+          extension and does not restart containerd: the new version and the new configuration take effect when the
+          node reboots, which the os-upgrade role does only when C(os_update_reboot) is V(true) and an operating system
+          update or a system extension was staged. Unset means V(false).
