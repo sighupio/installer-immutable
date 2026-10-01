@@ -1,98 +1,165 @@
 ---
 argument_specs:
   main:
-    short_description: Configure, start and (on upgrade) align a member of the etcd cluster.
-    description: >-
-      Renders etcd.env and the etcdctl profile, restarts/enables etcd, and on upgrade stages the etcd
-      sysext, renews certs and (for off-control-plane etcd) distributes client certs.
+    short_description: Configure and start the etcd member of the node.
+    description:
+      - >-
+        Copies the etcd certificate authority created by C(furyctl create pki) to the node, generates the server, peer
+        and client certificates of the member with C(kubeadm), writes the etcd environment file and an C(etcdctl)
+        profile, and starts etcd, restarting it when its environment file changed. When the variable
+        C(tls_cipher_suites) is set, the environment file also restricts etcd to those TLS cipher suites
+        (C(ETCD_CIPHER_SUITES)). When etcd does not run on the control-plane nodes, the role copies the etcd CA
+        certificate and the etcd client certificate and key of the API server to the nodes of O(etcd_ansible_group_name)
+        after it generates them.
+      - >-
+        During an upgrade, the role stages the new etcd system extension, renews the etcd certificates after a backup,
+        and does not restart etcd for a changed environment file.
     options:
       etcd_config_dir:
         type: path
         required: false
-        description: Destination directory for etcd.env and kubeadm-etcd.yml.
+        default: /etc/etcd
+        description:
+          - >-
+            Directory where the role writes the etcd environment file C(etcd.env) and the C(kubeadm) configuration
+            C(kubeadm-etcd.yml) that generates the etcd certificates.
+          - >-
+            The renewal of the certificates during an upgrade always reads C(/etc/etcd/kubeadm-etcd.yml), whatever
+            the value of this variable is.
       etcd_certs_dir:
         type: path
         required: false
-        description: Directory holding etcd TLS material, referenced by etcd.env and etcdctl.sh.
+        default: /etc/etcd/pki
+        description:
+          - >-
+            Directory of the TLS certificates and keys of etcd. The etcd environment file and the C(etcdctl)
+            profile point to the files in it.
+          - >-
+            Setting the owner and permissions of newly generated certificates, and renewing the certificates during
+            an upgrade, always use C(/etc/etcd/pki), whatever the value of this variable is.
       etcd_name:
         type: str
         required: false
-        description: etcd member name (ETCD_NAME); defaults to the inventory hostname.
+        description: Name of the etcd member (C(ETCD_NAME)). Defaults to the inventory host name of the node.
       etcd_data_dir:
         type: path
         required: false
-        description: etcd data directory (ETCD_DATA_DIR).
+        default: /var/lib/etcd
+        description: Directory of the etcd data (C(ETCD_DATA_DIR)).
       etcd_initial_cluster:
         type: str
         required: true
-        description: Initial cluster peer list (ETCD_INITIAL_CLUSTER); furyctl always renders it. Empty would break etcd bootstrap, so it is required.
+        description: >-
+          Members of the etcd cluster at bootstrap (C(ETCD_INITIAL_CLUSTER)), as a comma-separated list of
+          C(<member name>=<peer URL>) entries. etcd cannot form the cluster without it.
       etcd_initial_cluster_state:
         type: str
         required: false
         choices: ["new", "existing"]
-        description: Initial cluster state (ETCD_INITIAL_CLUSTER_STATE), typically new or existing.
+        default: new
+        description: >-
+          Initial state of the etcd cluster (C(ETCD_INITIAL_CLUSTER_STATE)): V(new) to bootstrap a new cluster,
+          V(existing) for a member that joins a running cluster.
       etcd_address:
         type: str
         required: false
-        description: Node IP etcd binds/advertises on; defaults to the gathered default_ipv4 address.
+        description: >-
+          IP address on which the member listens for peer traffic and that it advertises to the other members, on
+          port 2380; it is also a subject alternative name of the certificates of the member. Defaults to the IPv4
+          address of the default network interface of the node.
       etcd_advertise_client_urls:
         type: str
         required: false
-        description: Client URL etcd advertises to peers (ETCD_ADVERTISE_CLIENT_URLS).
+        description: >-
+          Client URLs that the member advertises to the rest of the cluster (C(ETCD_ADVERTISE_CLIENT_URLS)). Defaults
+          to port 2379 over HTTPS on the IPv4 address of the default network interface of the node.
       etcd_listen_client_urls:
         type: str
         required: false
-        description: Client URLs etcd listens on (ETCD_LISTEN_CLIENT_URLS).
+        description: >-
+          Client URLs on which the member listens (C(ETCD_LISTEN_CLIENT_URLS)). Defaults to port 2379 over HTTPS on
+          the IPv4 address of the default network interface of the node and on C(127.0.0.1).
       etcd_metrics_address:
         type: str
         required: false
-        description: Host part of the etcd metrics listen URL (ETCD_LISTEN_METRICS_URLS).
+        description: >-
+          Address on which etcd serves its metrics over plain HTTP, on port O(etcd_metrics_port). Defaults to the IPv4
+          address of the default network interface of the node.
       etcd_metrics_port:
         type: int
         required: false
-        description: Port for the etcd metrics listen URL.
+        default: 2378
+        description: Port on which etcd serves its metrics.
       etcd_endpoints:
         type: list
         required: true
-        description: etcdctl endpoint list (ETCDCTL_ENDPOINTS), joined with commas in etcdctl.sh; furyctl always renders it. Empty would break etcdctl, so it is required.
+        description: >-
+          etcd endpoints that C(etcdctl) connects to, written to the C(etcdctl) profile C(/etc/profile.d/etcdctl.sh)
+          of the node. Without them, C(etcdctl) cannot reach the cluster.
       etcd_upgrade:
         type: bool
         required: false
-        description: When true, skips the in-band etcd restart and runs the sysext align and certs renewal.
+        default: false
+        description: >-
+          V(true) when the role runs during a cluster upgrade. The role then does not restart etcd when its
+          environment file changes, stages the new etcd system extension, copies the etcd certificates to
+          C($HOME/certs-backup) on the node and renews them with C(kubeadm).
       etcd_on_control_plane:
         type: bool
         required: false
-        description: Whether etcd runs on the control plane; when false the certs distribution tasks run.
+        default: true
+        description: >-
+          Whether etcd runs on the control-plane nodes. When V(false), and the role has just generated the
+          certificates, it copies the files of O(etcd_certs) from the first node of the inventory group C(etcd) to
+          every node of O(etcd_ansible_group_name).
       etcd_pki_local_dir:
         type: path
         required: false
-        description: Local path to the furyctl-generated etcd CA copied to the node.
+        description: >-
+          Directory on the furyctl host with the etcd certificate authority (C(ca.crt) and C(ca.key)) that the role
+          copies to the node, in the layout that C(furyctl create pki) writes. Defaults to C(../pki/etcd), relative to
+          the directory of the playbook.
       etcd_certs:
         type: list
         required: false
-        description: Certificate filenames fetched from the etcd node and distributed to the etcd group.
+        default:
+          - etcd/ca.crt
+          - apiserver-etcd-client.crt
+          - apiserver-etcd-client.key
+        description: >-
+          Files, relative to O(etcd_certs_dir), that the role copies to the nodes of O(etcd_ansible_group_name) when
+          etcd does not run on the control-plane nodes.
       etcd_ansible_group_name:
         type: str
         required: false
-        description: Inventory group holding the etcd nodes; targets certificate distribution.
+        default: control_plane
+        description: >-
+          Inventory group whose nodes receive the files of O(etcd_certs) when etcd does not run on the control-plane
+          nodes.
       os_update_reboot:
         type: bool
         required: false
         description: >-
-          Caller-supplied flag from the os-update role; when true the renewed-cert etcd restart runs for a
-          node that will not reboot. Read as os_update_reboot | default(false) | bool; no role default.
+          Whether the upgrade may reboot the node, for an operating system update or to activate staged system
+          extensions. During an upgrade, the role restarts etcd to load the renewed certificates only when this is
+          V(true) and the node is not waiting for a reboot to activate a new operating system version or a new system
+          extension. When it is V(false), the role does not restart etcd, which keeps the old certificates until its
+          next restart. Unset means V(false).
   # Entry-point keys carry the .yml suffix to match how the distribution upgrade
   # playbooks invoke them (include_role tasks_from: <name>.yml). ansible-core does
   # not strip the extension when matching the arg spec, so the key must be exact.
   pre_reboot.yml:
-    short_description: Assert etcd cluster health and snapshot the DB before an OS-update reboot.
+    short_description: Check the etcd cluster and back up the etcd member before the node reboots.
     description: >-
-      Requires the whole etcd cluster healthy, ensures the backup directory exists and takes a live
-      snapshot of the local member so the node is never rebooted without a backup.
+      Used during an upgrade, before a dedicated etcd node reboots for an operating system update. Fails unless every
+      member of the etcd cluster is healthy, then saves a snapshot of the etcd database of the member to C($HOME/etcd-backup) on the node. A
+      failed snapshot fails the run, so the node never reboots without a backup.
     options: {}
   post_reboot.yml:
-    short_description: Wait for etcd to rejoin and report cluster health after the reboot.
+    short_description: Wait for the etcd cluster to be healthy again after the node rebooted.
     description: >-
-      Polls etcd endpoint health until the whole cluster is healthy again, then moves the confirmed-safe
-      pre-reboot snapshot out of the backup directory.
+      Used during an upgrade, after a dedicated etcd node rebooted. Checks the health of the etcd cluster and, until
+      every member is healthy, checks it again every 5 seconds, up to 30 more times; it fails when the cluster is still
+      not healthy. It then moves the snapshots saved by the C(pre_reboot.yml) entry point from C($HOME/etcd-backup)
+      to C(/tmp) on the node.
     options: {}

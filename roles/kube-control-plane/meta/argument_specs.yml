@@ -1,236 +1,444 @@
 ---
 argument_specs:
   main:
-    short_description: Bootstrap or upgrade a Kubernetes control-plane node with kubeadm
-    description: Renders kubeadm/kubelet/audit/admission config, runs kubeadm init or upgrade, and provisions user kubeconfigs.
+    short_description: Create or upgrade the Kubernetes control plane of a control-plane node with kubeadm.
+    description:
+      - >-
+        Copies the certificate authorities and the service-account key pair created by C(furyctl create pki) to the
+        node, writes the C(kubeadm) configuration with the audit policy, the admission configuration, the optional
+        encryption configuration and, when O(oidc_issuer_url) is set, the OIDC authentication configuration of the API
+        server, and runs C(kubeadm init) on a node where the control plane does not exist yet.
+      - >-
+        On a node where the control plane exists, the role applies a changed configuration to the control-plane
+        components, with a new API server certificate when O(kubernetes_apiserver_certSANs) changed. It also creates
+        the kubeconfig files of O(kubernetes_users_names), fetches them and C(admin.conf) to the furyctl host, and
+        installs a CronJob that approves the serving certificate requests of the kubelets.
+      - >-
+        During an upgrade, the steps above run first. Because the target version is part of the C(kubeadm)
+        configuration, on an existing control plane they already apply the new version to the C(kubeadm-config)
+        ConfigMap and to the control-plane components. The role then activates the new versions of the kubernetes and
+        kubeadm system extensions installed on the node, checks that the target version is at most one minor version
+        away from the version of the node, renews the control-plane certificates and runs C(kubeadm upgrade apply).
     options:
       kubernetes_version:
         type: str
         required: true
-        description: Kubernetes version rendered into kubeadm.yml.j2 (kubernetesVersion and version-gated cloud-provider/cloud-config flags).
+        description: >-
+          Kubernetes version of the control plane (C(kubernetesVersion) of the C(kubeadm) configuration). During an
+          upgrade it is the target version, and the role refuses a target more than one minor version away from the
+          version of the node before it runs C(kubeadm upgrade apply). This check comes after the role has applied the
+          changed C(kubeadm) configuration, with the new version, to the C(kubeadm-config) ConfigMap and to the
+          control-plane components of an existing control plane, so it does not prevent that change.
       kubelet_csr_approver_tag:
         type: str
         required: true
-        description: Image tag for the kubelet-csr-approver deployment rendered into kubelet-csr-approver.yaml.j2.
+        description: >-
+          Tag of the C(kubelet-csr-approver) image, pulled from O(kubernetes_image_registry). A CronJob in the
+          C(kube-system) namespace runs it every 5 minutes to approve the serving certificate requests of the
+          kubelets.
       kubernetes_local_pki_dir:
         type: path
         required: false
-        description: Local copy source directory for ca/front-proxy/sa PKI files.
+        default: ../pki/master
+        description: >-
+          Directory on the furyctl host with the Kubernetes PKI created by C(furyctl create pki). The role copies
+          C(ca.crt), C(ca.key), C(front-proxy-ca.crt), C(front-proxy-ca.key), C(sa.key) and C(sa.pub) from it to
+          C(/etc/kubernetes/pki) on the node.
       audit_log_dir:
         type: path
         required: false
-        description: Audit log directory, also used for kubeadm audit-log-path and apiserver extraVolumes.
+        default: /var/log/kubernetes
+        description: >-
+          Directory of the audit log of the API server, C(kube-apiserver-audit.log). The role creates it and mounts
+          it into the API server.
       audit_policy_config_path:
         type: path
         required: false
-        description: Copy destination for the audit policy and kubeadm audit-policy-file/extraVolumes mount.
+        default: /etc/kubernetes/audit.yaml
+        description: >-
+          Path on the node where the role writes the audit policy of the API server, the policy that the role
+          ships. The file is mounted into the API server.
       kubernetes_encryption_config:
         type: path
         required: false
-        description: Copy source for the encryption config; guarded and gates encryption blocks when non-empty.
+        default: ""
+        description: >-
+          File on the furyctl host with the encryption configuration of the API server. When set, the role copies it
+          to O(kubernetes_remote_encryption_config) and gives it to the API server with the
+          C(encryption-provider-config) flag; when empty, the API server gets no encryption configuration.
       kubernetes_remote_encryption_config:
         type: path
         required: false
-        description: Copy destination and kubeadm encryption-provider-config/extraVolumes path.
+        default: /etc/kubernetes/encryption-config.yml
+        description: >-
+          Path on the node of the encryption configuration of the API server, used when
+          O(kubernetes_encryption_config) is set.
       kubeadm_config_file:
         type: path
         required: false
-        description: Rendered kubeadm config destination used for validate, init, and kubeconfig user.
+        default: /etc/kubernetes/kubeadm.yml
+        description: >-
+          Path on the node of the C(kubeadm) configuration that the role writes and that C(kubeadm init) and the
+          later C(kubeadm) commands of the role read.
       kubeadm_patches_path:
         type: path
         required: false
-        description: Directory for kubeadm patch files and kubeadm.yml.j2 patches.directory.
+        default: /etc/kubernetes/patches/
+        description: >-
+          Directory of the C(kubeadm) patches. The role writes there the kubelet configuration of the node and the
+          patches that make the scheduler and the controller manager listen on the IPv4 address of the default
+          network interface of the node, so that their metrics can be collected.
       kubeadm_config_path:
         type: path
         required: false
-        description: Directory for kubeadm-config; also used by the conditionally-included reconfigure tasks.
+        default: /etc/kubernetes/kubeadm-config
+        description: >-
+          Directory where the role keeps backups when it applies a changed configuration to an existing control
+          plane: the C(kubeadm-config) ConfigMap and, when the subject alternative names of the API server change,
+          the Kubernetes PKI of the node.
       kubernetes_users_kubeconfig_dir:
         type: path
         required: false
-        description: Directory where per-user kubeconfigs are generated and fetched from.
+        default: /etc/kubernetes/users
+        description: Directory on the node where the role creates the kubeconfig files of O(kubernetes_users_names).
       kubernetes_users_names:
         type: list
         required: false
-        description: List of user names to generate kubeconfigs for; empty means no users.
+        default: []
+        description: >-
+          Users for which the role creates a kubeconfig file, C(<name>.kubeconfig), with O(kubernetes_users_org) as
+          organization. The role fetches the files to O(kubernetes_kubeconfig_path) on the furyctl host.
       kubernetes_users_org:
         type: str
         required: false
-        description: Organization passed to kubeadm kubeconfig user --org.
+        default: sighup
+        description: Organization, which Kubernetes reads as a group, of the users of O(kubernetes_users_names).
       kubernetes_kubeconfig_path:
         type: path
         required: false
-        description: Local fetch destination for user kubeconfigs, admin.conf, and super-admin.conf.
+        default: .
+        description: >-
+          Directory on the furyctl host where the role fetches the kubeconfig files of O(kubernetes_users_names),
+          C(admin.conf) and, during an installation, C(super-admin.conf).
       upgrade:
         type: bool
         required: false
-        description: When true, run the upgrade path (sysext + upgrade tasks) instead of a fresh init.
+        default: false
+        description: >-
+          V(true) when the role runs during a cluster upgrade. The role first runs the same steps as during an
+          installation, which apply a changed C(kubeadm) configuration, including a new O(kubernetes_version), to the
+          existing control plane. It then activates the new versions of the kubernetes and kubeadm system extensions
+          installed on the node, checks the version skew and upgrades the control plane with C(kubeadm upgrade apply).
+          During an upgrade, the role does not fetch C(super-admin.conf).
       kubernetes_hostname:
         type: str
         required: false
-        description: Node name set in kubeadm nodeRegistration.name; defaults to the fqdn fact.
+        description: >-
+          Name of the Kubernetes node (C(nodeRegistration.name) of the C(kubeadm) configuration). The node gets this
+          name when C(kubeadm init) registers it; changing the value later does not rename the node. During an upgrade,
+          the role reads the version of the node under this name. Defaults to the fully qualified domain name of the
+          node.
       kubernetes_apiserver_advertise_address:
         type: str
         required: false
-        description: Local API server advertise address; defaults to the default_ipv4 fact.
+        description: >-
+          IP address that the API server of the node advertises to the cluster, on port 6443. Defaults to the IPv4
+          address of the default network interface of the node.
       kubernetes_control_plane_address:
         type: str
         required: true
-        description: Cluster controlPlaneEndpoint rendered into kubeadm.yml.j2; furyctl always renders the VIP. Required because the fqdn fallback would misconfigure the endpoint in an HA cluster.
+        description: >-
+          Address of the Kubernetes API server for the whole cluster (C(controlPlaneEndpoint)), such as the virtual IP
+          address or the load balancer in front of the control-plane nodes, with an optional port: for example
+          C(ctrl01.example.com:6443).
       kubernetes_cluster_name:
         type: str
         required: false
-        description: Cluster name rendered into kubeadm.yml.j2 clusterName; furyctl always renders it from metadata.name.
+        default: immutable-dev
+        description: >-
+          Name of the cluster (C(clusterName) of the C(kubeadm) configuration). furyctl always sets it from
+          C(metadata.name) of the cluster configuration.
       kubernetes_image_registry:
         type: str
         required: false
-        description: Image repository for kubeadm imageRepository/dns and the kubelet-csr-approver image; furyctl always renders it from immutable.yaml (or the user's advanced.registry).
+        default: registry.sighup.io/fury/on-premises
+        description: >-
+          Registry of the control-plane images, of CoreDNS and of C(kubelet-csr-approver). furyctl always sets it: to
+          C(spec.kubernetes.advanced.registry) of the cluster configuration when that field is set, otherwise to the
+          C(imageRegistry) of the Kubernetes version in C(immutable.yaml), the versions file of the installer.
       coredns_image_prefix:
         type: str
         required: false
-        description: CoreDNS image path suffix appended to dns.imageRepository; furyctl always renders it from immutable.yaml.
+        default: /coredns
+        description: >-
+          Path appended to O(kubernetes_image_registry) to form the image repository of CoreDNS. When empty, the role
+          does not set the image repository of CoreDNS. furyctl always sets it from C(corednsImagePrefix) in
+          C(immutable.yaml), the versions file of the installer.
       kubernetes_pod_cidr:
         type: str
         required: false
-        description: Pod subnet for kubeadm podSubnet and KubeProxyConfiguration clusterCIDR.
+        default: 10.32.0.0/16
+        description: IP range of the pods (C(podSubnet) of C(kubeadm), and C(clusterCIDR) of kube-proxy).
       kubernetes_svc_cidr:
         type: str
         required: false
-        description: Service subnet rendered into kubeadm serviceSubnet.
+        default: 10.96.0.0/16
+        description: IP range of the services (C(serviceSubnet) of C(kubeadm)).
       kubernetes_cloud_provider:
         type: str
         required: false
-        description: cloud-provider flag for kubelet and controller-manager.
+        default: ""
+        description: >-
+          Value of the C(cloud-provider) flag of the kubelet and of the controller manager. The kubelet gets the flag
+          when C(kubeadm init) sets up the node; the role passes a later change only to the controller manager.
       kubernetes_cloud_config:
         type: str
         required: false
-        description: controller-manager cloud-config path and extraVolumes mount, rendered when non-empty.
+        default: ""
+        description: >-
+          Path on the node of the configuration file of the cloud provider. When set, the file is mounted into the
+          controller manager and given to it with the C(cloud-config) flag.
       kubernetes_apiserver_certSANs:
         type: list
         required: false
-        description: Extra subject alternative names (IPs or domains) for the API server certificate.
+        default: []
+        description: >-
+          Extra subject alternative names of the API server certificate: IP addresses or domain names. When the list
+          changes on an existing control plane, the role backs up the Kubernetes PKI and generates a new API server
+          certificate.
       etcd_endpoints:
         type: list
         required: false
-        description: External etcd endpoints rendered into kubeadm etcd.external.endpoints.
+        default: ["https://127.0.0.1:2379"]
+        description: Endpoints of the etcd cluster that the API server uses (C(etcd.external.endpoints) of C(kubeadm)).
       etcd_ca_file:
         type: path
         required: false
-        description: External etcd CA certificate path (kubeadm etcd caFile).
+        default: /etc/etcd/pki/etcd/ca.crt
+        description: Path on the node of the CA certificate with which the API server verifies etcd.
       etcd_key_file:
         type: path
         required: false
-        description: External etcd client key path (kubeadm etcd keyFile).
+        default: /etc/etcd/pki/apiserver-etcd-client.key
+        description: Path on the node of the client key of the API server for etcd.
       etcd_cert_file:
         type: path
         required: false
-        description: External etcd client certificate path (kubeadm etcd certFile).
+        default: /etc/etcd/pki/apiserver-etcd-client.crt
+        description: Path on the node of the client certificate of the API server for etcd.
       audit_policy_max_age:
         type: int
         required: false
-        description: Value for kubeadm audit-log-maxage.
+        default: 30
+        description: Number of days the API server keeps a rotated audit log file (C(audit-log-maxage)).
       audit_policy_max_size:
         type: int
         required: false
-        description: Value for kubeadm audit-log-maxsize.
+        default: 100
+        description: Size, in megabytes, at which the API server rotates the audit log (C(audit-log-maxsize)).
       audit_policy_max_backup:
         type: int
         required: false
-        description: Value for kubeadm audit-log-maxbackup.
+        default: 10
+        description: Number of rotated audit log files the API server keeps (C(audit-log-maxbackup)).
       eventratelimits:
         type: list
         required: false
-        description: EventRateLimit admission limits looped over in admission-config.yaml.j2.
+        default:
+          - type: Server
+            qps: 500
+            burst: 2000
+          - type: Namespace
+            qps: 20
+            burst: 100
+            cacheSize: 4096
+          - type: User
+            qps: 20
+            burst: 100
+            cacheSize: 4096
+        description: >-
+          Limits of the C(EventRateLimit) admission plugin of the API server, which limits the rate at which events
+          are accepted: a list of maps with the keys C(type), such as V(Server), V(Namespace) or V(User), C(qps),
+          C(burst) and, optionally, C(cacheSize).
       terminated_pod_gc_threshold:
         type: int
         required: false
-        description: controller-manager terminated-pod-gc-threshold rendered into kubeadm.yml.j2.
+        default: 500
+        description: >-
+          Number of terminated pods that the controller manager keeps before it deletes them
+          (C(terminated-pod-gc-threshold)). Without it, the controller manager keeps 12500.
       tls_cipher_suites:
         type: list
         required: false
-        description: TLS cipher suites for apiserver, scheduler, and controller-manager.
+        default:
+          - TLS_AES_128_GCM_SHA256
+          - TLS_AES_256_GCM_SHA384
+          - TLS_CHACHA20_POLY1305_SHA256
+          - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+        description: >-
+          TLS cipher suites that the API server, the scheduler and the controller manager accept
+          (C(tls-cipher-suites)).
       kubelet_certificate_authority_file:
         type: path
         required: false
-        description: CA file for the apiserver kubelet-certificate-authority flag.
+        default: /etc/kubernetes/pki/ca.crt
+        description: >-
+          Path on the node of the CA certificate with which the API server verifies the serving certificates of the
+          kubelets (C(kubelet-certificate-authority)).
       oidc_issuer_url:
         type: str
         required: false
-        description: OIDC issuer URL; when non-empty, renders the AuthenticationConfiguration and the apiserver authentication-config flag.
+        default: ""
+        description: >-
+          URL of the OpenID Connect (OIDC) issuer whose tokens the API server accepts to authenticate users. When set,
+          the role writes an C(AuthenticationConfiguration) file with the OIDC settings of this role to
+          O(kubernetes_remote_authentication_config) and starts the API server with the C(authentication-config) flag.
+          When empty, the API server gets none of the OIDC settings of this role.
       oidc_client_id:
         type: str
         required: false
-        description: OIDC client id, the first accepted audience in the AuthenticationConfiguration.
+        default: ""
+        description: >-
+          OIDC client ID, used when O(oidc_issuer_url) is set. It is the first audience
+          that the API server accepts in a token; O(oidc_extra_audiences) adds more, and a token needs only one of them.
       oidc_ca_file:
         type: path
         required: false
-        description: CA file on the node; its content is inlined as certificateAuthority when it differs from oidc_ca_file_default.
+        description: >-
+          Path on the node of the CA certificates with which the API server verifies the OIDC issuer, used when
+          O(oidc_issuer_url) is set. When the path differs from O(oidc_ca_file_default), the role reads the file and
+          writes its content into the authentication configuration as C(certificateAuthority). Defaults to the value of
+          O(oidc_ca_file_default); in that case the role writes no C(certificateAuthority), because the API server
+          already trusts the system CA bundle.
       oidc_ca_file_default:
         type: path
         required: false
-        description: System CA bundle already trusted by the apiserver; oidc_ca_file equal to it means no certificateAuthority.
+        default: /etc/ssl/certs/ca-certificates.crt
+        description: >-
+          Path of the system CA bundle, which the API server already trusts. The role compares O(oidc_ca_file) with
+          this value to decide whether it writes a C(certificateAuthority). To use another CA, set O(oidc_ca_file):
+          changing only this value adds no C(certificateAuthority), because O(oidc_ca_file) follows it by default.
       oidc_username_claim:
         type: str
         required: false
-        description: JWT claim used as the username (claimMappings.username.claim).
+        default: email
+        description: >-
+          Claim of the OIDC token that the API server uses as the user name (C(claimMappings.username.claim)), used
+          when O(oidc_issuer_url) is set.
       oidc_username_prefix:
         type: str
         required: false
-        description: 'Prefix prepended to OIDC usernames (claimMappings.username.prefix); "-" disables it.'
+        default: "oidc:"
+        description: >-
+          Prefix that the API server adds to the user names of OIDC users (C(claimMappings.username.prefix)), used when
+          O(oidc_issuer_url) is set. The value V(-) means no prefix. An empty value also means no prefix when
+          O(oidc_username_claim) is V(email); with any other claim, an empty value makes the prefix the issuer URL
+          followed by V(#).
       oidc_groups_claim:
         type: str
         required: false
-        description: JWT claim used for groups (claimMappings.groups.claim).
+        default: groups
+        description: >-
+          Claim of the OIDC token that the API server uses as the groups of the user (C(claimMappings.groups.claim)),
+          used when O(oidc_issuer_url) is set.
       oidc_groups_prefix:
         type: str
         required: false
-        description: Prefix prepended to OIDC groups (claimMappings.groups.prefix).
+        default: "oidc:"
+        description: >-
+          Prefix that the API server adds to the groups of OIDC users (C(claimMappings.groups.prefix)), used when
+          O(oidc_issuer_url) is set.
       oidc_extra_audiences:
         type: list
         elements: str
         required: false
-        description: Additional accepted token audiences besides oidc_client_id (audienceMatchPolicy MatchAny).
+        default: []
+        description: >-
+          More audiences that the API server accepts in the OIDC tokens, in addition to O(oidc_client_id), used when
+          O(oidc_issuer_url) is set. A token is accepted when it has at least one of the audiences.
       kubernetes_remote_authentication_config:
         type: path
         required: false
-        description: AuthenticationConfiguration path on the node; its directory is mounted into the apiserver.
+        default: /etc/kubernetes/oidc/authentication-config.yaml
+        description: >-
+          Path on the node where the role writes the C(AuthenticationConfiguration) file when O(oidc_issuer_url) is
+          set. The role creates the directory of the file and mounts that directory into the API server.
       kubeadm_skip_phases:
         type: list
         required: false
-        description: Phases to skip, rendered into kubeadm skipPhases (init and upgrade templates).
+        default: []
+        description: >-
+          C(kubeadm) phases to skip in C(kubeadm init) and C(kubeadm upgrade apply), for example the phase that
+          installs kube-proxy.
       kubelet_tls_cipher_suites:
         type: list
         required: false
-        description: TLS cipher suites for the kubelet (KubeletConfiguration tlsCipherSuites).
+        default:
+          - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        description: TLS cipher suites that the kubelet of the node accepts (C(tlsCipherSuites) of the kubelet configuration).
       kubelet_config_streaming_connection_idle_timeout:
         type: str
         required: false
-        description: Kubelet streamingConnectionIdleTimeout in KubeletConfiguration.
+        default: 5m
+        description: >-
+          Time after which the kubelet closes an idle streaming connection, such as the one of C(kubectl exec)
+          (C(streamingConnectionIdleTimeout) of the kubelet configuration).
       kubelet_config_read_only_port:
         type: int
         required: false
-        description: Kubelet readOnlyPort in KubeletConfiguration.
+        default: 0
+        description: >-
+          Port of the read-only API of the kubelet, which needs no authentication (C(readOnlyPort) of the kubelet
+          configuration). V(0) disables it.
       kubelet_config_server_tls_bootstrap:
         type: bool
         required: false
-        description: Kubelet serverTLSBootstrap in KubeletConfiguration.
+        default: true
+        description: >-
+          When V(true), the kubelet requests its serving certificate from the cluster (C(serverTLSBootstrap) of the
+          kubelet configuration); the CronJob that the role installs approves these requests.
       kubelet_config_pod_pids_limit:
         type: int
         required: false
-        description: Kubelet podPidsLimit in KubeletConfiguration.
+        default: 4096
+        description: Largest number of processes in a pod (C(podPidsLimit) of the kubelet configuration).
       kubelet_config_cgroup_driver:
         type: str
         required: false
         choices: ["systemd", "cgroupfs"]
-        description: Kubelet cgroupDriver in KubeletConfiguration.
+        default: systemd
+        description: >-
+          cgroup driver of the kubelet (C(cgroupDriver) of the kubelet configuration). The containerd role configures
+          containerd with the systemd cgroup driver.
       kubernetes_taints:
         type: list
         required: false
-        description: Node taints rendered into kubeadm nodeRegistration.taints; only applied when defined.
+        description: >-
+          Taints of the node (C(nodeRegistration.taints) of the C(kubeadm) configuration), as a list of Kubernetes
+          taints with the keys C(key), C(value) and C(effect), set when C(kubeadm init) registers the node. When unset,
+          the role leaves the taints out of the C(kubeadm) configuration and kubeadm gives the node its default
+          control-plane taint, C(node-role.kubernetes.io/control-plane:NoSchedule); an empty list sets no taints.
       kubeadm_upgrade_config_file:
         type: path
         required: false
-        description: Rendered upgrade config destination used by kubeadm upgrade apply --config.
+        default: /etc/kubernetes/kubeadm-upgrade-config.yml
+        description: Path on the node of the C(kubeadm) configuration that the role writes for C(kubeadm upgrade apply).
       kubelet_config_path:
         type: path
         required: false
-        description: Base directory for the kubelet KubeletConfiguration patch and its patches subdir.
+        default: /var/lib/kubelet/kubelet-config
+        description: >-
+          Directory on the node whose C(patches) subdirectory holds the kubelet configuration patch that the role
+          writes during an upgrade and applies with C(kubeadm upgrade node phase kubelet-config).

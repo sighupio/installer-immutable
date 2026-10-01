@@ -1,52 +1,67 @@
 ---
 argument_specs:
   main:
-    short_description: Configure and manage the keepalived VRRP service
+    short_description: Run keepalived on the node to share a virtual IP address between a group of nodes.
     description: >-
-      Renders keepalived.conf (and the API server health-check script on control planes),
-      validates the config, and reloads/enables or disables the keepalived service.
+      When O(keepalived_cluster) is V(true), writes the keepalived configuration, with one VRRP instance that holds
+      the virtual IP address O(keepalived_ip) and the other nodes of O(keepalived_ansible_group_name) as unicast
+      peers, checks it, reloads keepalived when it changed, and starts and enables the service. When
+      O(keepalived_cluster) is V(false), the role stops, disables and masks keepalived. During an upgrade, the role
+      also stages the new keepalived system extension, which the reboot of the node activates, whatever the value of
+      O(keepalived_cluster) is.
     options:
       keepalived_cluster:
         type: bool
         required: false
+        default: false
         description: >-
-          Master enable flag. When true, renders keepalived.conf and starts/enables the
-          service; when false, the service is stopped, disabled and masked.
+          Whether keepalived runs on the node. V(true) configures and starts keepalived; V(false) stops, disables and
+          masks the keepalived service.
       keepalived_interface:
         type: str
         required: false
+        default: eth0
         description: >-
-          Network interface used for the VRRP instance and as the ansible_facts key to
-          resolve each peer's IPv4 address for the unicast configuration.
+          Network interface of the VRRP instance. The role also reads the IPv4 address of this interface on every
+          other node of O(keepalived_ansible_group_name) to list the unicast peers, so each of those nodes needs an
+          interface with this name.
       keepalived_on_controlplane:
         type: bool
         required: false
+        default: false
         description: >-
-          When true (with keepalived_cluster), copies the API server health-check script
-          and selects the check_api_server vrrp_script branch instead of check_haproxy.
+          Whether keepalived runs on control-plane nodes. When V(true), keepalived checks every 3 seconds that the
+          Kubernetes API server answers on C(https://localhost:6443/healthz); when V(false), it checks every 2
+          seconds that an HAProxy process runs on the node. The result of the check changes the VRRP priority of the
+          node.
       keepalived_passphrase:
         type: str
         required: false
-        description: Password rendered into the authentication auth_pass field of keepalived.conf.
+        default: "12345678"
+        description: Password that the nodes of the VRRP instance share (C(auth_pass), with C(PASS) authentication).
       keepalived_virtual_router_id:
         type: str
         required: false
-        description: Quoted numeric string rendered into the virtual_router_id directive of keepalived.conf.
+        default: "51"
+        description: >-
+          Virtual router ID of the VRRP instance, a number written as a string. It must be unique among the VRRP
+          clusters of the same network.
       keepalived_ansible_group_name:
         type: str
         required: false
+        default: load_balancers
         description: >-
-          Inventory group name whose members build the unicast_peer list in keepalived.conf.
+          Inventory group of the nodes that form the keepalived cluster; the role lists the other nodes of the group
+          as unicast peers. The configuration fails when the group has only one node.
       keepalived_ip:
         type: str
         required: false
         description: >-
-          Virtual IP address rendered into the virtual_ipaddress block of keepalived.conf.
-          Caller-passed; effectively required whenever keepalived_cluster is true (no default
-          in the role).
+          Virtual IP address that the node holding the VRRP instance carries. The role has no default for it: set it
+          whenever O(keepalived_cluster) is V(true).
       upgrade:
         type: bool
         required: false
         description: >-
-          Caller-passed run toggle. When true, stage the keepalived sysext during
-          upgrade; the reboot applies the new binary.
+          V(true) when the role runs during a cluster upgrade. The role then stages the new keepalived system
+          extension, which the reboot of the node activates. Unset means V(false).

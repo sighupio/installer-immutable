@@ -1,22 +1,46 @@
 ---
 argument_specs:
   main:
-    short_description: Set custom kernel parameters via sysctl.d
-    description: Writes custom kernel parameters to a sysctl.d file and reloads them, backing up original values first.
+    short_description: Set kernel parameters on the node and keep them across reboots.
+    description: >-
+      Saves the current value of every kernel parameter to O(sysctl_dump_path) the first time it runs, writes the
+      parameters of O(sysctl_parameters) to the file O(sysctl_file_path) and, when that file changed, reloads the
+      kernel parameters of the node with C(sysctl --system). The node reads the file again at every boot, so the
+      parameters survive a reboot.
     options:
       sysctl_d_path:
         type: path
         required: false
-        description: Directory holding sysctl.d configuration files; created if absent.
+        default: /etc/sysctl.d
+        description: >-
+          Directory of the C(sysctl.d) configuration files. The role creates it when it does not exist. Use a
+          directory that C(sysctl --system) reads, such as C(/etc/sysctl.d): the role loads the parameters with that
+          command, which ignores files in other directories.
       sysctl_file_path:
         type: path
         required: false
-        description: Destination file for the rendered custom kernel parameters.
+        description: >-
+          File where the role writes the parameters of O(sysctl_parameters). Defaults to
+          C(99-sighup-distribution.conf) in O(sysctl_d_path).
       sysctl_dump_path:
         type: path
         required: false
-        description: Path where original sysctl values are dumped before changes for restore.
+        description: >-
+          File where the role saves the output of C(sysctl -a), the values of all kernel parameters, before it
+          changes any of them. The role writes it only when it does not exist yet, so it keeps the values from before
+          the first run. Defaults to C(sysctl-dump.original) in O(sysctl_d_path).
       sysctl_parameters:
         type: list
         required: false
-        description: List of custom kernel parameters as maps with name and value keys.
+        default: []
+        description:
+          - Kernel parameters to set, as a list of maps with the keys C(name) and C(value).
+          - "For example, this list sets one parameter:"
+          - |-
+            ```yaml
+            - name: net.ipv4.ip_forward
+              value: 1
+            ```
+          - >-
+            Removing a parameter from the list does not reset the parameter to its previous value. To reset it, add
+            it to the list with its previous value, which O(sysctl_dump_path) records, or reboot the node.

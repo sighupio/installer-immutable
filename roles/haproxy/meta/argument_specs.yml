@@ -1,31 +1,68 @@
 ---
 argument_specs:
   main:
-    short_description: Install and configure HAProxy as a containerd-managed systemd service
+    short_description: Run HAProxy on the node as a container managed by systemd.
     description: >-
-      Pulls the HAProxy container image, renders the configuration and systemd unit,
-      validates the config in a throwaway container, and starts the service.
+      Pulls the HAProxy container image with containerd, writes the HAProxy configuration file and a systemd unit
+      that runs HAProxy with C(ctr), and starts the service. The role pulls the image on every run and reports a
+      change when the tag points to a new image; it does not restart HAProxy for a new image alone, so the running
+      container keeps the old image until the service restarts. A changed configuration is first checked in a
+      temporary container, then loaded by a reload of HAProxy; a changed unit restarts the service. The role ends by
+      waiting until port 8405, the Prometheus frontend of HAProxy, is open.
     options:
       haproxy_container_image:
         type: str
         required: true
-        description: Container image reference without tag for the HAProxy container (ctr image pull and systemd unit).
+        description: >-
+          Container image of HAProxy, with its registry and without the tag. containerd pulls it with the registry
+          configurations in C(/etc/containerd/certs.d).
       haproxy_container_tag:
         type: str
         required: true
-        description: Image tag appended after ':' to haproxy_container_image when pulling and running HAProxy.
+        description: Tag of the HAProxy container image.
       haproxy_configuration_file_path:
         type: path
         required: false
-        description: Destination path of the rendered HAProxy config; its directory holds the CA and validation mount.
+        default: /etc/haproxy/haproxy.cfg
+        description:
+          - >-
+            Path of the HAProxy configuration file on the node. The whole directory that holds the file is mounted
+            into the container at C(/usr/local/etc/haproxy/), read-only.
+          - >-
+            The check of a changed configuration reads C(/usr/local/etc/haproxy/haproxy.cfg) in the container, so the
+            file name must stay C(haproxy.cfg).
       haproxy_configuration:
         type: str
         required: false
-        description: >-
-          HAProxy configuration body rendered into the config file via templates/haproxy.cfg.j2.
-          furyctl always renders the real LB config; the default is a non-functional stats-only
-          placeholder with no API backend.
+        default: |
+          # example haproxy.cfg
+          global
+            maxconn 512
+          frontend stats
+            bind *:1936
+            mode http
+            log global
+            maxconn 10
+            timeout client 100s
+            stats enable
+            stats uri /stats
+            stats hide-version
+            stats refresh 30s
+            stats show-node
+        description:
+          - Content of the HAProxy configuration file, before the Prometheus frontend that the role appends.
+          - >-
+            The Prometheus frontend is always enabled: the role appends to the file a C(prometheus) frontend that
+            serves the HAProxy metrics on port 8405, and uses it to check that HAProxy runs.
+          - >-
+            The default is an example that only serves a statistics page on port 1936 and has no backend for the
+            Kubernetes API server: do not use it for a cluster.
       kubernetes_local_pki_dir:
         type: path
         required: false
-        description: Optional local Kubernetes PKI dir; its ca.crt is copied next to the config when defined.
+        description: >-
+          Directory on the furyctl host with the Kubernetes PKI created by C(furyctl create pki), such as its
+          C(pki/master) directory. When set, the role copies the Kubernetes CA certificate C(ca.crt) from it next to
+          the HAProxy configuration file, as C(kubernetes.crt); HAProxy finds it at
+          C(/usr/local/etc/haproxy/kubernetes.crt), for example to check the TLS certificates of the control-plane
+          nodes. When unset, the role copies nothing.

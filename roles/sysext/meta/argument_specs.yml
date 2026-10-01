@@ -4,67 +4,70 @@ argument_specs:
   # (include_role tasks_from: align.yml). ansible-core does not strip the
   # extension when matching the arg spec, so the key must be exact.
   align.yml:
-    short_description: Align a subset of system extensions to their target .raw versions.
+    short_description: Bring selected system extensions of the node to their target versions.
     description: >-
-      Downloads and activates the target .raw for each selected sysext component, tracking which
-      changed so the caller can decide daemon restarts and reboots.
+      For each component of O(sysext_components) that is installed on the node and not at the version that
+      O(sysext_targets) gives, downloads the target C(.raw) image, verifies it against the C(SHA256SUMS) file of its
+      release and, optionally, the signature of that file, points the active link of the component to it, and keeps
+      only the current and the previous image. The role lists the changed components in O(sysext_changed_components).
+      With O(sysext_refresh_after), it activates the new versions at once with C(systemd-sysext refresh); otherwise it
+      records that a system extension waits for the next boot of the node.
     options:
       sysext_targets:
         type: dict
         required: true
         description: >-
-          Full component map (name -> {version, arch[arch].url}) rendered by the caller; source of
-          each component's target version and .raw URL.
+          Target version and image of every system extension: a map from the name of a component to its C(version)
+          and to C(arch), a map from each architecture to the C(url) of the C(.raw) image of the component. The
+          C(SHA256SUMS) file of the release must be next to the image.
       sysext_components:
         type: list
         required: true
-        description: >-
-          Component keys (a subset of sysext_targets) this run should align; others in the map are
-          left untouched.
+        description: Components of O(sysext_targets) to align in this run; the role leaves the other components as they are.
       sysext_refresh_after:
         type: bool
         required: false
         description: >-
-          Caller opt-in for an in-band systemd-sysext refresh after staging; otherwise a staged
-          daemon extension is recorded for boot-time activation.
+          When V(true), the role runs C(systemd-sysext refresh) at the end, so that the aligned versions are active at
+          once. Otherwise, the role records that a system extension waits for the next boot of the node.
       sysext_changed_components:
         type: list
         required: false
         description: >-
-          Components whose .raw changed in this alignment; reset at start and read by the caller to
-          decide daemon restarts.
+          Components whose image changed in this run. The role empties the list when it starts and fills it as it
+          goes, so that the task file that includes this entry point can read it afterwards.
       sysext_arch:
         type: str
         required: false
         description: >-
-          System-extension architecture (x86-64/arm64) used as the key into each component's arch map;
-          from the rendered node_arch with an architecture-fact fallback.
+          Architecture of the system extensions of the node, the key into the C(arch) map of each target. Defaults to
+          O(node_arch) or, when that is not set, to V(arm64) on an C(aarch64) node and to V(x86-64) otherwise.
         choices: ["x86-64", "arm64"]
       node_arch:
         type: str
         required: false
         choices: ["x86-64", "arm64"]
-        description: >-
-          Per-node architecture override feeding the sysext_arch default expression; falls back to the
-          architecture fact when unset.
+        description: Architecture of the node. When set, it is the default of O(sysext_arch).
       sysext_extensions_store:
         type: path
         required: false
-        description: Directory holding downloaded .raw files, one subdirectory per component.
+        description: Directory on the node where the role keeps the downloaded images, one subdirectory per component.
       sysext_active_dir:
         type: path
         required: false
-        description: Directory of active sysext symlinks (<name>.raw) that systemd-sysext merges.
+        description: >-
+          Directory of the active links, C(<name>.raw), that systemd-sysext merges. A component without a link in
+          this directory is not installed on the node, and the role leaves it alone.
       sysext_verify_signature:
         type: bool
         required: false
         description: >-
-          Verify the artifact signature over SHA256SUMS before activation; off by default because
-          releases publish only SHA256SUMS today.
+          When V(true), the role verifies the signature of the C(SHA256SUMS) file of the release before it activates
+          an image. The releases publish only C(SHA256SUMS) today, without a signature.
       sysext_signature_tool:
         type: str
         required: false
-        description: Tool used to verify SHA256SUMS when signature verification is enabled.
+        description: Tool that verifies the signature when O(sysext_verify_signature) is V(true).
         choices:
           - cosign
           - gpg
@@ -72,9 +75,11 @@ argument_specs:
         type: str
         required: false
         description: >-
-          Key passed to the verification tool (cosign --key or gpg --keyring); required when
-          sysext_verify_signature is enabled.
+          Key of the signature check: the key given to C(cosign --key), or the keyring given to C(gpg --keyring).
+          Needed when O(sysext_verify_signature) is V(true).
       sysext_signature_ext:
         type: str
         required: false
-        description: Extension of the SHA256SUMS signature file (SHA256SUMS.<ext>) fetched for verification.
+        description: >-
+          Extension of the signature file, C(SHA256SUMS.<ext>), that the role downloads next to C(SHA256SUMS) when
+          O(sysext_verify_signature) is V(true).

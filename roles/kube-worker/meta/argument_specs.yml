@@ -1,99 +1,183 @@
 ---
 argument_specs:
   main:
-    short_description: Join a node to the cluster as a kubelet worker.
-    description: >-
-      Renders the kubeadm join config and the KubeletConfiguration, then runs
-      kubeadm join / upgrade to register the node as a worker. All options are
-      optional with defaults; join secrets (bootstrap token, CA hash) are empty
-      by default and must be supplied via hostvars for a working join.
+    short_description: Join the node to the cluster as a worker node, or upgrade it.
+    description:
+      - >-
+        Writes the kubelet configuration patch of the node and, on a node that has not joined the cluster yet, the
+        C(kubeadm) join configuration, then runs C(kubeadm join). On a node that already joined, the role applies a
+        changed kubelet configuration with C(kubeadm upgrade node phase kubelet-config) and restarts the kubelet.
+      - >-
+        During an upgrade, the role does not apply the kubelet configuration in place: it stages the new versions of the
+        kubernetes and kubeadm system extensions installed on the node and calls the C(os_reboot.yml) entry point of the
+        os-upgrade role, which reboots the node into what is staged when C(os_update_reboot) is V(true) and an operating
+        system update or a system extension was staged. This needs the C(os_stage.yml) entry point of the os-upgrade
+        role to have run earlier in the same play. After that step, the role checks that the target version is at most
+        one minor version away from the version of the node, runs C(kubeadm upgrade node) and restarts the kubelet.
     options:
       kubeadm_config_file:
         type: path
         required: false
-        description: Destination path for the rendered kubeadm config, used by kubeadm config validate and kubeadm join --config.
+        default: /etc/kubernetes/kubeadm.yml
+        description: >-
+          Path on the node of the C(kubeadm) join configuration. The role writes it only on a node that has not
+          joined the cluster yet.
       kubelet_config_path:
         type: path
         required: false
-        description: Path to the kubelet-config object; also the patches dir passed to kubeadm upgrade node phase kubelet-config --patches.
+        default: /var/lib/kubelet/kubelet-config
+        description: >-
+          Directory on the node whose C(patches) subdirectory holds the kubelet configuration patch of the node, which
+          C(kubeadm join) and C(kubeadm upgrade node) apply.
       kubernetes_control_plane_address:
         type: str
         required: true
-        description: apiServerEndpoint (VIP) in the kubeadm join discovery bootstrapToken; furyctl always renders it. Required because the fqdn fallback would point the worker at itself and break the join.
+        description: >-
+          Address of the Kubernetes API server that the node joins (C(apiServerEndpoint) of the C(kubeadm) join
+          configuration), such as the virtual IP address or the load balancer in front of the control-plane nodes,
+          with its port: for example C(ctrl01.example.com:6443).
       kubernetes_bootstrap_token:
         type: str
         required: false
-        description: Discovery bootstrap token for the kubeadm join. Empty by default; must be supplied externally for a working join.
+        default: ""
+        description: >-
+          Bootstrap token with which the node joins the cluster. The kube-control-plane role creates one, valid for 30
+          minutes, with C(kubeadm token create). The empty default is not enough to join a cluster.
       kubernetes_ca_hash:
         type: str
         required: false
-        description: CA cert hash (caCertHashes) for the kubeadm join discovery. Empty by default; must be supplied externally for a working join.
+        default: ""
+        description: >-
+          Hash of the public key of the Kubernetes certificate authority (C(caCertHashes)), in the form
+          C(sha256:<hex>), with which the node verifies the control plane when it joins. The kube-control-plane role
+          computes it. The empty default is not enough to join a cluster.
       kubernetes_cloud_provider:
         type: str
         required: false
-        description: Value for the kubelet cloud-provider extra arg rendered in the kubeadm config.
+        default: ""
+        description: >-
+          Value of the C(cloud-provider) flag of the kubelet, set when the node joins; the role does not apply a later
+          change to a node that already joined.
       kubernetes_hostname:
         type: str
         required: false
-        description: nodeRegistration.name for the kubeadm join. Defaults to the node fqdn fact.
+        description: >-
+          Name of the Kubernetes node (C(nodeRegistration.name) of the C(kubeadm) join configuration), set when the
+          node joins; changing it later does not rename the node. During an upgrade, the role reads the version of the
+          node under this name. Defaults to the fully qualified domain name of the node.
       kubernetes_role:
         type: str
         required: false
-        description: Value of the node.kubernetes.io/role node label applied at join.
+        default: worker
+        description: Value of the C(node.kubernetes.io/role) label of the node, set when the node joins.
       kubernetes_taints:
         type: list
         required: false
-        description: nodeRegistration.taints for the kubeadm join; rendered only when the list is non-empty.
+        default: []
+        description: >-
+          Taints of the node (C(nodeRegistration.taints) of the C(kubeadm) join configuration), as a list of
+          Kubernetes taints with the keys C(key), C(value) and C(effect), set when the node joins. The empty default
+          sets none.
       kubelet_config_cgroup_driver:
         type: str
         required: false
         choices: ["systemd", "cgroupfs"]
-        description: cgroupDriver in the KubeletConfiguration.
+        default: systemd
+        description: >-
+          cgroup driver of the kubelet (C(cgroupDriver) of the kubelet configuration). The containerd role configures
+          containerd with the systemd cgroup driver.
       kubelet_config_streaming_connection_idle_timeout:
         type: str
         required: false
-        description: streamingConnectionIdleTimeout in the KubeletConfiguration.
+        default: 5m
+        description: >-
+          Time after which the kubelet closes an idle streaming connection, such as the one of C(kubectl exec)
+          (C(streamingConnectionIdleTimeout) of the kubelet configuration).
       kubelet_config_read_only_port:
         type: int
         required: false
-        description: readOnlyPort in the KubeletConfiguration; 0 disables the read-only port.
+        default: 0
+        description: >-
+          Port of the read-only API of the kubelet, which needs no authentication (C(readOnlyPort) of the kubelet
+          configuration). V(0) disables it.
       kubelet_config_server_tls_bootstrap:
         type: bool
         required: false
-        description: serverTLSBootstrap in the KubeletConfiguration.
+        default: true
+        description: >-
+          When V(true), the kubelet requests its serving certificate from the cluster (C(serverTLSBootstrap) of the
+          kubelet configuration); the CronJob that the kube-control-plane role installs approves these requests.
       kubelet_config_pod_pids_limit:
         type: int
         required: false
-        description: podPidsLimit in the KubeletConfiguration.
+        default: 4096
+        description: Largest number of processes in a pod (C(podPidsLimit) of the kubelet configuration).
       kubelet_config_static_pod_path:
         type: str
         required: false
-        description: staticPodPath in the KubeletConfiguration; empty disables static pod manifests on workers and skips the mkdir.
+        default: ""
+        description: >-
+          Directory from which the kubelet runs static pods (C(staticPodPath) of the kubelet configuration). The
+          empty default disables static pods on the node; when set, the role creates the directory.
       kubelet_tls_cipher_suites:
         type: list
         required: false
-        description: tlsCipherSuites allowed by the kubelet, rendered into the KubeletConfiguration.
+        default:
+          - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        description: TLS cipher suites that the kubelet of the node accepts (C(tlsCipherSuites) of the kubelet configuration).
       upgrade:
         type: bool
         required: false
         description: >-
-          Caller-passed flag gating the worker upgrade block (sysext align, os-upgrade reboot, upgrade.yml)
-          and the skip of the Reconfigure Kubelet step. Read as upgrade | default(false) | bool.
+          V(true) when the role runs during a cluster upgrade. The role then does not apply a changed kubelet
+          configuration in place and runs the upgrade steps. Unset means V(false).
       kubectl_bin:
         type: str
         required: false
         description: >-
-          Path to the kubectl binary used on the controller (delegate_to localhost) to read the worker's
-          current Kubernetes version for the upgrade step-delta check. Cluster-global var from inventory.
+          Path of C(kubectl) on the furyctl host, with which the role reads the current Kubernetes version of the node
+          during an upgrade. This role has no default for it; the node-maintenance and upgrade-gates roles define
+          V(kubectl) as their own default.
       kubernetes_kubeconfig_path:
         type: path
         required: false
         description: >-
-          Directory path (with trailing slash) prepended to super-admin.conf for the --kubeconfig used in the
-          upgrade skew check. Cluster-global var from inventory.
+          Directory on the furyctl host, ending with C(/), that holds C(super-admin.conf), with which the role reads the
+          current Kubernetes version of the node during an upgrade. This role has no default for it.
       kubernetes_version:
         type: str
         required: true
         description: >-
-          Target Kubernetes version asserted against the worker's current version in the upgrade one-minor-per-step
-          check. Cluster-global var from inventory.
+          Target Kubernetes version of an upgrade. The role reads it only during an upgrade, and refuses a target more
+          than one minor version away from the version of the node before it runs C(kubeadm upgrade node). The check
+          runs after the reboot step, so it cannot prevent the reboot into the staged system extensions.
+      kubelet_certificate_authority_file:
+        type: path
+        required: false
+        default: /etc/kubernetes/pki/ca.crt
+        description: >-
+          Path on the node of the CA certificate with which the API server verifies the serving certificates of the kubelets. The
+          kube-control-plane role uses it; the kube-worker role does not read it.
+      tls_cipher_suites:
+        type: list
+        required: false
+        default:
+          - TLS_AES_128_GCM_SHA256
+          - TLS_AES_256_GCM_SHA384
+          - TLS_CHACHA20_POLY1305_SHA256
+          - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+        description: >-
+          TLS cipher suites that the API server, the scheduler and the controller manager accept. The
+          kube-control-plane role uses it; the kube-worker role does not read it.

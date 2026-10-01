@@ -1,0 +1,100 @@
+{#
+  Variable reference of a role README, rendered by ansible-docsmith between the
+  "ANSIBLE DOCSMITH MAIN" markers (mise run docs). It uses only the documented
+  template contract of ansible-docsmith 2.x: specs, anchor_ns and its filters.
+  ansible-docsmith renders it with trim_blocks and lstrip_blocks.
+
+  A description is a string or a list of paragraphs. The table shows its first
+  paragraph; a variable gets a details block after the table when the table
+  cannot show all of it: more paragraphs, choices, a default that spans several
+  lines (a multi-line string, a list or a dictionary) or nested options.
+
+  Anchors follow the convention of the ansible-docsmith templates, so that the
+  links it generates for O(name) markup resolve: "variable-<name>" for the main
+  entry point and for a role with one entry point, "<entry point>-variable-<name>"
+  otherwise.
+#}
+{% macro first_paragraph(description) %}{% if description is string %}{{ description | format_description | trim }}{% elif description %}{{ description[0] | format_description | trim }}{% endif %}{% endmacro %}
+{% macro cell(text) %}{{ text | replace("\n", " ") | replace("|", "\\|") }}{% endmacro %}
+{% macro block_default(value) %}{{ value is mapping or (value is sequence and value is not string and value | length > 0) or (value is string and "\n" in value) }}{% endmacro %}
+{% macro needs_details(spec) %}{{ (spec.description is sequence and spec.description is not string and spec.description | length > 1) or (spec.choices | default([], true) | length > 0) or (spec.options | default({}, true) | length > 0) or block_default(spec.default) == "True" }}{% endmacro %}
+{% macro type_of(spec) %}`{{ spec.type | default("str", true) }}`{% if spec.elements %} of `{{ spec.elements }}`{% endif %}{% endmacro %}
+{% macro inline_default(value) %}{% if value is none %}—{% elif value is string and value == "" %}`""`{% elif value is string %}{{ value | code_escape(true) }}{% elif value is mapping %}`{}`{% elif value is sequence %}`[]`{% else %}{{ value | format_default(true) }}{% endif %}{% endmacro %}
+{% macro has_defaults(options) %}{{ options.values() | selectattr("default", "ne", none) | list | length > 0 }}{% endmacro %}
+{% macro options_table(options, prefix) %}
+{% set show_default = has_defaults(options) == "True" %}
+{% set headers = ["Variable", "Type", "Required"] + (["Default"] if show_default else []) + ["Description"] %}
+| {{ headers | join(" | ") }} |
+|{{ " --- |" * headers | length }}
+{% for name, spec in options.items() %}
+{% set anchor = prefix ~ name %}
+{% set details = needs_details(spec) == "True" %}
+{% set name_cell = ("" if details else '<a id="' ~ anchor ~ '"></a>') ~ "`" ~ name ~ "`" %}
+{% set description = cell(first_paragraph(spec.description)) ~ (" [Details](#" ~ anchor ~ ")." if details else "") %}
+{% set default = "[See details](#" ~ anchor ~ ")" if block_default(spec.default) == "True" else inline_default(spec.default) %}
+{% set cells = [name_cell, type_of(spec), "Yes" if spec.required else "No"] + ([default] if show_default else []) + [description] %}
+| {{ cells | join(" | ") }} |
+{% endfor %}
+{% endmacro %}
+{% macro details_blocks(options, prefix, level) %}
+{% for name, spec in options.items() if needs_details(spec) == "True" %}
+{% set anchor = prefix ~ name %}
+
+{{ "#" * level }} `{{ name }}`<a id="{{ anchor }}"></a>
+
+{{ spec.description | format_description | trim }}
+{% if spec.choices %}
+
+Choices: {{ spec.choices | map("string") | map("code_escape") | join(", ") }}.
+{% endif %}
+{% if block_default(spec.default) == "True" %}
+
+Default:
+
+{% if spec.default is string %}
+```text
+{{ spec.default | trim("\n") }}
+```
+{% else %}
+```json
+{{ spec.default | tojson(indent=2) }}
+```
+{% endif %}
+{% endif %}
+{% if spec.options %}
+
+Options of `{{ name }}`:
+
+{{ options_table(spec.options, anchor ~ "-") }}
+{{- details_blocks(spec.options, anchor ~ "-", level + 1) }}
+{% endif %}
+{% endfor %}
+{% endmacro %}
+{% set only_main = specs | length == 1 and "main" in specs %}
+{% for entry_point, entry_spec in specs.items() %}
+{% set options = entry_spec.options or {} %}
+{% set prefix = anchor_ns ~ ("variable-" if (specs | length == 1 or entry_point == "main") else entry_point ~ "-variable-") %}
+{% if not loop.first %}
+
+{% endif %}
+{% if only_main %}
+## Role variables
+{% else %}
+## Entry point: `{{ entry_point }}`
+{% endif %}
+{% if entry_spec.short_description %}
+
+{{ entry_spec.short_description | format_description | trim }}
+{% endif %}
+{% if entry_spec.description %}
+
+{{ entry_spec.description | format_description | trim }}
+{% endif %}
+
+{% if options %}
+{{ options_table(options, prefix) }}
+{{- details_blocks(options, prefix, 3) -}}
+{% else %}
+This entry point takes no variables.
+{% endif %}
+{% endfor %}
