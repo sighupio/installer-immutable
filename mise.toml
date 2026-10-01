@@ -12,6 +12,9 @@ yamlfmt = "0.21.0"
 "pipx:ansible-lint" = "26.4.0"
 # used by scripts/bump-sysext.sh
 yq = "4.53.6"
+# used by lint:cis-benchmark
+shellcheck = "0.11.0"
+shfmt = "3.14.1"
 
 [tasks.lint]
 description = "Run yamllint + ansible-lint (production profile, strict)"
@@ -39,3 +42,27 @@ run = "ansible-playbook tests/argument-specs/validate.yml"
 [tasks."bump-sysext"]
 description = "Bump a sysext in immutable.yaml with its release checksums (see scripts/bump-sysext.sh -h)"
 run = "scripts/bump-sysext.sh"
+
+[tasks."cis-benchmark"]
+description = "Run the CIS Kubernetes Benchmark on the nodes of a furyctl cluster folder (see tools/cis-benchmark/README.md)"
+# From the directory mise is called in, so that a relative furyctl folder resolves there.
+dir = "{{cwd}}"
+run = "{{config_root}}/tools/cis-benchmark/run.sh"
+
+[tasks."test:cis-benchmark"]
+description = "Test the CIS benchmark tool: task files and golden reports on fixtures, run.sh on fake folders (localhost, no cluster)"
+run = [
+  "ansible-playbook tools/cis-benchmark/tests/render.yml",
+  "tools/cis-benchmark/tests/run-sh.sh",
+]
+
+[tasks."lint:cis-benchmark"]
+description = "Run shellcheck and shfmt on the scripts of the CIS benchmark tool"
+run = [
+  "shellcheck tools/cis-benchmark/run.sh tools/cis-benchmark/scripts/sync-profiles.sh tools/cis-benchmark/tests/run-sh.sh",
+  "shfmt -i 2 -ci -bn -d tools/cis-benchmark/run.sh tools/cis-benchmark/scripts/sync-profiles.sh tools/cis-benchmark/tests/run-sh.sh",
+]
+
+[tasks."check:cis-benchmark-profiles"]
+description = "Check that the vendored kube-bench profiles match installer-on-premises at the recorded commit (needs network)"
+run = "tools/cis-benchmark/scripts/sync-profiles.sh --check"

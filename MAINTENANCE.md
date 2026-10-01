@@ -49,3 +49,6 @@ Tasks live under `[tasks]` in `mise.toml` (no `Makefile`). Configuration is in `
 
 If the system already has a broken `/usr/bin/ansible-lint`, prefer `mise exec -- ansible-lint ...` or activate `mise` in your shell so the pinned version wins on `PATH`.
 
+## CIS benchmark tool
+
+`tools/cis-benchmark` runs the CIS Kubernetes Benchmark on the nodes of an installed cluster. It is not part of the installation. How to bump kube-bench, re-sync its profiles from the on-premises installer and update its tests is in [`tools/cis-benchmark/MAINTENANCE.md`](tools/cis-benchmark/MAINTENANCE.md).

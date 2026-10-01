@@ -1,0 +1,19 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# kube-bench 0.12.0 is the version installer-on-premises and the distribution e2e pin.
+# Both digests were checked against kube-bench_0.12.0_checksums.txt of the release
+# on 2026-09-27.
+cis_kube_bench_version: "0.12.0"
+cis_kube_bench_sha256:
+  amd64: ca95df2b5984ccd2e9d2727eb4271bc83232b28688e98965f530472d537799c1
+  arm64: 23cd827647fa0a0ef9a847940d76b0616ba3a2951fb5e779ebf5d6afbd407ed8
+# furyctl renders node_arch as x86-64 or arm64; the release names its tarballs amd64 and arm64.
+cis_kube_bench_arch:
+  x86-64: amd64
+  arm64: arm64
+cis_kube_bench_release_url: https://github.com/aquasecurity/kube-bench/releases/download
+cis_profiles_source_repo: https://github.com/sighupio/installer-on-premises
+cis_profiles_source_commit: 80fc521d4047aeb468eab8215b2e6cc571975bdc

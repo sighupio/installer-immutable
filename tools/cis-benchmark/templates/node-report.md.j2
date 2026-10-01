@@ -1,0 +1,74 @@
+{#- Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+    Use of this source code is governed by a BSD-style
+    license that can be found in the LICENSE file. -#}
+{%- from 'macros.j2' import cell -%}
+{%- macro finding(entry, with_remediation) %}
+
+### {{ entry.id }} {{ entry.text | replace('\n', ' ') | trim }}
+{% if with_remediation %}
+
+Remediation:
+
+```text
+{{ entry.remediation }}
+```
+{% endif %}
+{% endmacro -%}
+# CIS benchmark report: {{ item.short }}
+
+| Field | Value |
+| --- | --- |
+| Host | {{ cell(item.host) }} |
+| Role | {{ item.role }} |
+| Targets | {{ item.targets | join(',') }} |
+| Benchmark | {{ cis_resolved_benchmark }} |
+| kube-bench version | {{ cis_kube_bench_version }} |
+| Date (UTC) | {{ cis_run_date }} |
+{% if item.error %}
+
+## Error
+
+No result was collected from this host:
+
+```text
+{{ item.error }}
+```
+{% else %}
+
+## Totals
+
+| Target | Section | Description | PASS | FAIL | WARN | INFO |
+| --- | --- | --- | --- | --- | --- | --- |
+{% for section in item.sections %}
+| {{ section.target }} | {{ section.id }} | {{ cell(section.text) }} | {{ section.pass }} | {{ section.fail }} | {{ section.warn }} | {{ section.info }} |
+{% endfor %}
+| Total |  |  | {{ item.totals.pass }} | {{ item.totals.fail }} | {{ item.totals.warn }} | {{ item.totals.info }} |
+
+## Failures
+{% for entry in item.failures %}
+{{ finding(entry, true) -}}
+{% else %}
+
+None.
+{% endfor %}
+
+## Warnings
+{% for entry in item.warnings %}
+{{ finding(entry, true) -}}
+{% else %}
+
+None.
+{% endfor %}
+
+## Declared skips
+{% for entry in item.skips %}
+{{ finding(entry, false) -}}
+{% else %}
+
+None.
+{% endfor %}
+
+## Raw result
+
+[../raw/{{ item.short }}.json](../raw/{{ item.short }}.json)
+{% endif %}

@@ -1,0 +1,83 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Runs on localhost before any node is contacted: everything here is read from the
+# inventory furyctl rendered, nothing from the nodes.
+- name: Check that cis_output_dir is an absolute path
+  ansible.builtin.assert:
+    that:
+      - cis_output_dir is defined
+      - cis_output_dir is string
+      - cis_output_dir is ansible.builtin.abs
+      - cis_output_dir is not ansible.builtin.search('/$')
+    fail_msg: >-
+      cis_output_dir must be an absolute path without a trailing slash, got
+      '{{ cis_output_dir | default('nothing') }}'.
+    quiet: true
+
+- name: Check that the inventory holds nodes to benchmark
+  ansible.builtin.assert:
+    that:
+      - cis_nodes | length > 0
+    fail_msg: The groups control_plane, etcd and nodes of the inventory hold no host.
+    quiet: true
+
+- name: Check that kubernetes_version looks like X.Y or X.Y.Z
+  ansible.builtin.assert:
+    that:
+      - kubernetes_version is defined
+      - kubernetes_version | string is ansible.builtin.match('^[0-9]+\.[0-9]+(\.[0-9]+)?$')
+    fail_msg: >-
+      kubernetes_version must be set in the inventory as X.Y or X.Y.Z, got
+      '{{ kubernetes_version | default('nothing') }}'.
+    quiet: true
+
+# kube-bench publishes amd64 and arm64 tarballs only, and furyctl renders node_arch as
+# x86-64 or arm64 (templates/kubernetes/immutable/hosts.yaml.tpl of the distribution).
+- name: Check that every node has a supported node_arch
+  ansible.builtin.assert:
+    that:
+      - cis_unsupported_archs | length == 0
+    fail_msg: >-
+      node_arch must be one of {{ cis_kube_bench_arch.keys() | join(', ') }}:
+      {{ cis_unsupported_archs | join(', ') }}.
+    quiet: true
+  vars:
+    cis_unsupported_archs: >-
+      {%- set found = [] -%}
+      {%- for host in cis_nodes -%}
+      {%- set arch = hostvars[host].node_arch | default('') -%}
+      {%- if arch not in cis_kube_bench_arch -%}
+      {%- set _ = found.append(host ~ ' has ' ~ (arch if arch else 'no node_arch')) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ found }}
+
+# The report and raw file names use the short hostname.
+- name: Check that no two nodes share a short hostname
+  ansible.builtin.assert:
+    that:
+      - cis_colliding_hosts | length == 0
+    fail_msg: >-
+      These hosts share a short hostname, so their reports would overwrite each other:
+      {{ cis_colliding_hosts | join(', ') }}.
+    quiet: true
+  vars:
+    cis_short_names: "{{ cis_nodes | map('ansible.builtin.split', '.') | map('first') | list }}"
+    cis_colliding_hosts: >-
+      {%- set found = [] -%}
+      {%- for host in cis_nodes -%}
+      {%- if cis_short_names | select('equalto', host.split('.') | first) | list | length > 1 -%}
+      {%- set _ = found.append(host) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ found }}
+
+- name: Check that a dedicated etcd has members
+  ansible.builtin.assert:
+    that:
+      - cis_etcd_on_control_plane or cis_groups.etcd | length > 0
+    fail_msg: etcd_on_control_plane is false and the etcd group of the inventory is empty.
+    quiet: true
