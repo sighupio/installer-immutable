@@ -78,10 +78,11 @@ the markers of `roles/*/README.md`; it does not touch the `defaults/` files.
 mise run docs
 ```
 
-Run `mise run docs-check` before sending a pull request. It changes no file and fails when a README is not up to date or
-has no markers, when a variable of a `defaults/` file is missing from the argument spec, when a `default` of the argument
-spec differs from the `defaults/` file, when a role README breaks the Markdown rules of `.markdownlint.yaml`, or when a
-role README still has the placeholder text (`FIXME`) of a README that the generator created.
+Run `mise run docs-check` before sending a pull request; CI runs it too, in the `docs-check` step of the QA pipeline. It
+changes no file and fails when a README is not up to date or has no markers, when a variable of a `defaults/` file is
+missing from the argument spec, when a `default` of the argument spec differs from the `defaults/` file, when a role
+README breaks the Markdown rules of `.markdownlint.yaml`, or when a role README still has the placeholder text (`FIXME`)
+of a README that the generator created.
 
 ```sh
 mise run docs-check
