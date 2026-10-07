@@ -6,92 +6,68 @@ argument_specs:
   os_stage.yml:
     short_description: Stage a Flatcar operating system update on the inactive partition of the node.
     description: >-
-      Writes the configuration of the Flatcar update engine and fails when the node runs a Flatcar version newer than
-      O(os_update_target_version): downgrades are not supported. When the node runs an older version, the role starts
-      the update engine and launches the download of the update to the inactive A/B partition in the background,
-      unless the target version is already staged. It fails early, before any node is drained, when the update server
-      offers no update for the architecture of the node.
+      Fails when the node runs a Flatcar version newer than O(os_update_target_version): the role does not support
+      downgrades. When the node runs an older version, the role downloads the payload from the URL in
+      O(os_update_payload_pins) and compares its SHA-256 checksum with the pin. Then it stages the payload on the inactive A/B partition with C(flatcar-update).
+      The role does all of this before the upgrade drains the node. Thus a missing or bad payload stops the upgrade
+      while the node still serves. The role contacts no update server: it sets C(SERVER=disabled) in
+      C(/etc/flatcar/update.conf), so that every update check of the update engine fails, as Flatcar recommends.
     options:
       os_update_target_version:
         type: str
         required: true
-        description: >-
-          Target Flatcar version, compared with the Flatcar version of the node and with the version that is already
-          staged.
-      os_update_conf_path:
-        type: path
-        required: false
-        description: Path on the node of the configuration file of the update engine.
-      os_update_server:
-        type: str
-        required: false
-        description: >-
-          URL of the Omaha update server that the update engine asks for updates (C(SERVER) in its configuration). An
-          arm64 node needs a server that serves arm64 updates.
-      os_update_group:
-        type: str
-        required: false
-        description: Flatcar release track that the update engine follows (C(GROUP) in its configuration).
-      os_update_reboot_strategy:
-        type: str
-        required: false
-        choices: ["off", "reboot", "etcd-lock", "best-effort"]
-        description: >-
-          Reboot strategy of the update engine (C(REBOOT_STRATEGY) in its configuration). Keep V(off), so that the
-          update engine never reboots the node by itself: during an upgrade, the C(os_reboot.yml) entry point reboots
-          the node, and outside upgrades a tool such as Kured can coordinate reboots.
-      os_update_marker_path:
-        type: path
-        required: false
-        description: >-
-          File on the node where the role records the staged version, because the update engine forgets it when it
-          restarts.
-      os_update_stage_async_timeout:
+        description: Target Flatcar version, compared with the Flatcar version of the node.
+      os_update_payload_pins:
+        type: dict
+        required: true
+        description:
+          - >-
+            Pins of the Flatcar update payload of the target version, one for each architecture, from the
+            C(flatcar.arch.<arch>.update) entries of C(immutable.yaml). The keys are the architectures, V(x86-64) and
+            V(arm64). Each pin has the C(url) of C(flatcar_production_update.gz) and its C(sha256).
+          - >-
+            The checksum makes sure that the payload is O(os_update_target_version): C(flatcar-update) uses the
+            target version only as a label.
+      os_update_local_omaha_port:
         type: int
         required: false
-        description: Longest time, in seconds, that the background download may take.
+        description: >-
+          Port on the node of the local update server that C(flatcar-update) starts for the update engine. It must
+          not be in use on the node.
+      node_arch:
+        type: str
+        required: false
+        choices: ["x86-64", "arm64"]
+        description: >-
+          Architecture of the node, the key into O(os_update_payload_pins). Defaults to V(arm64) on an C(aarch64)
+          node and to V(x86-64) otherwise.
+      os_update_local_payload_port:
+        type: int
+        required: false
+        description: >-
+          Port on the node of the local server that C(flatcar-update) starts to serve the payload. It must not be in
+          use on the node.
   os_reboot.yml:
     short_description: Reboot the node into the staged Flatcar version and confirm that it booted.
     description:
       - >-
-        When the node runs an older version than the target, the role waits for the background download to finish,
-        checks that the update engine staged O(os_update_target_version), records it in O(os_update_marker_path) and
-        stages the flatcar-python system extension of the new version. When O(os_update_reboot) is V(true) and an
-        operating system update or a system extension waits for a reboot, the role reboots the node.
+        When the node runs an older version than the target, the role stages the flatcar-python system extension of
+        the new version. When O(os_update_reboot) is V(true) and an operating system update or a system extension
+        waits for a reboot, the role reboots the node.
       - >-
-        After an operating system update, the role checks that the node booted the target version and marks the
-        partition as good, so that the boot loader does not roll back at the next reboot; when the node booted the
-        previous version instead, the role restores the previous system extensions and fails. In every case, it leaves
-        the update engine stopped and masked.
+        After an operating system update, the role checks that the node booted the target version. Then it marks the
+        partition as good, so that the boot loader does not roll back at the next reboot. If the node booted the
+        previous version, the role restores the previous system extensions and fails.
     options:
       os_update_target_version:
         type: str
         required: true
-        description: Target Flatcar version that the staged update and the booted system must match.
+        description: Target Flatcar version that the booted system must match.
       os_update_reboot:
         type: bool
         required: false
-        description: Whether the role may reboot the node. When V(false), the role does not reboot the node.
-      os_update_stage_async_retries:
-        type: int
-        required: false
-        description: >-
-          Number of times, 5 seconds apart, that the role checks the background download again after the first
-          check, before it fails. Keep 5 times this value at least equal to O(os_update_stage_async_timeout), so that
-          the download can use all of its time.
-      os_update_marker_path:
-        type: path
-        required: false
-        description: File on the node where the role records the staged version; the role deletes it once the node booted the target version.
+        description: Whether the role can reboot the node. When V(false), the role does not reboot the node.
       os_update_reboot_timeout:
         type: int
         required: false
         description: Longest time, in seconds, that the role waits for the node to come back after the reboot.
-      os_update_server:
-        type: str
-        required: false
-        description: URL of the update server, named in the error message when the staged version is not the target version.
-      os_update_group:
-        type: str
-        required: false
-        description: Flatcar release track, named in the error message when the staged version is not the target version.

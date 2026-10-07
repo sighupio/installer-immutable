@@ -1,4 +1,7 @@
 ---
 # Negative fixture for os-upgrade/os_stage: omits required 'os_update_target_version'.
 # MUST fail validate_argument_spec (asserted via block/rescue).
-{}
+os_update_payload_pins:
+  arm64:
+    url: https://update.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_update.gz
+    sha256: f520ab474447e52d09af89d35894fb6fc50c78a695f0143ec2a1b76c46d9ed28

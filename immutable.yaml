@@ -83,6 +83,10 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.1/flatcar_production_image.bin.bz2
             sha256: d13940e18dda0de27b251306bb52cdc99f982d3d47bbd50744eeac69b555c361
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4593.2.1/flatcar_production_update.gz
+            sha256: 0d1dc0172548b0bf16860bf8cfdbe85d127142aee500e410fb8aaa34d69ade21
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
@@ -96,6 +100,10 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.1/flatcar_production_image.bin.bz2
             sha256: 8505dbd4d7a63c65c747bf80977f50fc6e37b31fce64320d92a94680fce7cbb9
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4593.2.1/flatcar_production_update.gz
+            sha256: 0f4993ec9cebcf5db6cb14cccfc9673bbea29f78af8ea5d112329dffe78f6d63
   1.35.5:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.1"
@@ -176,6 +184,10 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4593.2.3/flatcar_production_image.bin.bz2
             sha256: a7c057dab938a834c55b4d767f2893f166c9a0c4032f27fcb682676226c073af
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4593.2.3/flatcar_production_update.gz
+            sha256: 42e15966838fb7c63d132e8230716506c37b60cb785e61a0adece4d2bef423d9
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
@@ -189,6 +201,10 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_image.bin.bz2
             sha256: 53c92521a4c567debf66cbc18f64ab0fa98dc395b994bfcbbe8a86d31310c82e
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_update.gz
+            sha256: f520ab474447e52d09af89d35894fb6fc50c78a695f0143ec2a1b76c46d9ed28
   1.35.9:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.1"
@@ -269,6 +285,10 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_image.bin.bz2
             sha256: 0ff481d9dc9f5178e0ff3a9455f300bab92c788c8273c79145b11870e90a530d
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_update.gz
+            sha256: 2e0a6f790f226308c6074f361d8b0c2b5e0a7425eec2fbef8472d84c2fa5347f
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
@@ -282,6 +302,10 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_image.bin.bz2
             sha256: 36eb57007b77d7bc845d7fd1184d91e4a2fd8ff5f6600dd4153cdd6d1c5f83ba
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_update.gz
+            sha256: b5007fe9d6ac682c65f080bc937fde9ce29de12498d74c6d6b2ebe8bdb972b26
   1.36.5:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.2"
@@ -362,6 +386,10 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_image.bin.bz2
             sha256: 0ff481d9dc9f5178e0ff3a9455f300bab92c788c8273c79145b11870e90a530d
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_update.gz
+            sha256: 2e0a6f790f226308c6074f361d8b0c2b5e0a7425eec2fbef8472d84c2fa5347f
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
@@ -375,3 +403,7 @@ kubernetes:
             filename: flatcar_production_image.bin.bz2
             url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_image.bin.bz2
             sha256: 36eb57007b77d7bc845d7fd1184d91e4a2fd8ff5f6600dd4153cdd6d1c5f83ba
+          update:
+            filename: flatcar_production_update.gz
+            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_update.gz
+            sha256: b5007fe9d6ac682c65f080bc937fde9ce29de12498d74c6d6b2ebe8bdb972b26

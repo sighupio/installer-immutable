@@ -50,6 +50,7 @@
   entry: os_stage.yml
   required:
     - os_update_target_version
+    - os_update_payload_pins
 - role: os-upgrade
   entry: os_reboot.yml
   required:

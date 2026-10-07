@@ -1,12 +1,5 @@
 ---
-# STAGE half: launch the Flatcar update async (writes only the inactive partition); wait/reboot in os_reboot.yml.
-- name: Write update-engine configuration
-  ansible.builtin.template:
-    src: update.conf.j2
-    dest: "{{ os_update_conf_path }}"
-    owner: root
-    group: root
-    mode: "0644"
+# STAGE half: stage the pinned Flatcar payload on the inactive partition before the drain; os_reboot.yml reboots into it.
 
 # Downgrades are not supported: state in /var migrated by a newer OS may break an older one
 - name: Fail if the node runs a newer Flatcar than the target
@@ -21,94 +14,99 @@
 - name: Record whether the node is behind the target OS version
   ansible.builtin.set_fact:
     os_update_behind: "{{ ansible_facts['distribution_version'] is version(os_update_target_version, '<') }}"
-    os_update_staging_launched: false
 
-- name: Launch the OS stage on the inactive partition
+- name: Stage the target OS version on the inactive partition
   when: os_update_behind
+  vars:
+    os_update_arch: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
+    # flatcar-update deletes this directory after a successful stage; after a failure the payload stays for the next run.
+    os_update_payload_path: /var/tmp/flatcar-update/flatcar_production_update.gz
+    os_update_pin: "{{ os_update_payload_pins.get(os_update_arch, {}) }}"
   block:
-    - name: Unmask and start update-engine
+    - name: Fail when immutable.yaml has no update payload for the architecture of the node
+      ansible.builtin.assert:
+        that:
+          - os_update_pin.url | default('') | length > 0
+          - os_update_pin.sha256 | default('') | length > 0
+        fail_msg: >-
+          The os_update_payload_pins variable has no url and sha256 for Flatcar {{ os_update_target_version }} on
+          {{ os_update_arch }}. Add the flatcar.arch.{{ os_update_arch }}.update entry to immutable.yaml.
+          The upgrade did not change or drain the node.
+        quiet: true
+
+    - name: Create the directory for the payload
+      ansible.builtin.file:
+        path: "{{ os_update_payload_path | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    # Download before any change on the node: a missing or bad payload stops the run here, before the drain.
+    - name: Download the update payload
+      # Ansible tasks get no DefaultEnvironment: pass spec.infrastructure.proxy (see sysext/tasks/component.yml).
+      environment:
+        http_proxy: "{{ http_proxy | default('') or omit }}"
+        https_proxy: "{{ https_proxy | default('') or omit }}"
+        no_proxy: "{{ no_proxy | default('') or omit }}"
+        HTTP_PROXY: "{{ http_proxy | default('') or omit }}"
+        HTTPS_PROXY: "{{ https_proxy | default('') or omit }}"
+        NO_PROXY: "{{ no_proxy | default('') or omit }}"
+      ansible.builtin.get_url:
+        url: "{{ os_update_pin.url }}"
+        dest: "{{ os_update_payload_path }}"
+        checksum: "sha256:{{ os_update_pin.sha256 }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    # Before update-engine runs: a node from before SD 1.36 still points to the Nebraska update server, and
+    # flatcar-update can exit (port in use, OEM check) before it writes update.conf.
+    - name: Disable the update checks of update-engine
+      ansible.builtin.lineinfile:
+        path: /etc/flatcar/update.conf
+        regexp: "^SERVER="
+        line: SERVER=disabled
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+
+    # A fresh daemon has no update check in progress: flatcar-update fails during one, and with SERVER=disabled a
+    # long-running daemon does one about every 45 minutes. Nodes from before SD 1.36 have update-engine masked.
+    # With a proxy, Butane keeps it off the localhost requests.
+    - name: Unmask and restart update-engine
       ansible.builtin.systemd:
         name: update-engine.service
         masked: false
-        state: started
+        state: restarted
 
-    - name: Check update-engine status
+    - name: Read the status of update-engine
       register: os_update_pre_status
       changed_when: false
       ansible.builtin.command:
         cmd: update_engine_client -status
 
-    - name: Read the staged version marker
-      register: os_update_marker
-      failed_when: false
-      ansible.builtin.slurp:
-        src: "{{ os_update_marker_path }}"
-
-    - name: Determine if the target version is already staged
-      # Trust update-engine's NEW_VERSION (not just the marker) so a re-run reuses an already-staged update it can't re-offer.
-      ansible.builtin.set_fact:
-        os_update_pending_reboot: "{{ 'UPDATE_STATUS_UPDATED_NEED_REBOOT' in os_update_pre_status.stdout }}"
-        os_update_already_staged: >-
-          {{ 'UPDATE_STATUS_UPDATED_NEED_REBOOT' in os_update_pre_status.stdout
-             and (('NEW_VERSION=' ~ os_update_target_version) in os_update_pre_status.stdout
-                  or (os_update_marker.content | default('') | b64decode | trim) == os_update_target_version) }}
-
-    - name: Stage a fresh update (skip when the target is already staged)
-      when: not (os_update_already_staged | bool)
-      block:
-        # A staged update for another (or unknown) version blocks new updates until reboot
-        - name: Discard the stale staged update
-          when: os_update_pending_reboot | bool
-          register: os_update_reset
-          changed_when: os_update_reset.rc == 0
-          ansible.builtin.command:
-            cmd: update_engine_client -reset_status
-
-        # ASYNC: fire-and-forget so the ~450MB download runs while sysext + Kubernetes layers proceed; os_reboot.yml waits on this job (async_status) before rebooting.
-        - name: Update Flatcar from the update server (async)
-          register: node_upgrade_os_job
-          changed_when: true
-          ansible.builtin.command:
-            cmd: update_engine_client -update
-          async: "{{ os_update_stage_async_timeout }}"
-          poll: 0
-
-        - name: Record that an async stage was launched
-          ansible.builtin.set_fact:
-            os_update_staging_launched: true
-
-    # Pre-drain gate: fail early if the server offered no arch-matching update (arm64 not served / unreachable) instead of failing opaquely after the drain.
-    - name: Give update-engine time to contact the update server
-      when: os_update_staging_launched | bool
-      ansible.builtin.pause:
-        seconds: 10
-
-    - name: Poll update-engine until it accepts or rejects the offer
-      when: os_update_staging_launched | bool
-      register: os_update_offer
-      changed_when: false
-      failed_when: false
+    # flatcar-update refuses to run while an update waits for a reboot, and update-engine forgot its version: stage again.
+    - name: Discard the update that waits for a reboot
+      when: "'UPDATE_STATUS_UPDATED_NEED_REBOOT' in os_update_pre_status.stdout"
+      changed_when: true
       ansible.builtin.command:
-        cmd: update_engine_client -status
-      until: >-
-        (os_update_offer.stdout is search('UPDATE_STATUS_(UPDATE_AVAILABLE|DOWNLOADING|VERIFYING|FINALIZING|UPDATED_NEED_REBOOT)'))
-        or (os_update_offer.stdout is search('UPDATE_STATUS_IDLE')
-            and os_update_offer.stdout is search('NEW_VERSION=0\.0\.0'))
-      retries: 12
-      delay: 5
+        cmd: update_engine_client -reset_status
 
-    - name: Fail fast when the update server offered no matching update
-      when:
-        - os_update_staging_launched | bool
-        - os_update_offer.stdout is search('UPDATE_STATUS_IDLE')
-        - os_update_offer.stdout is search('NEW_VERSION=0\.0\.0')
-      vars:
-        os_update_board: "{{ 'arm64-usr' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'amd64-usr' }}"
-      ansible.builtin.fail:
-        msg: >-
-          Pre-drain OS-update gate FAILED on {{ inventory_hostname }}: update server {{ os_update_server }}
-          (GROUP={{ os_update_group }}) offered no {{ os_update_target_version }} update for board
-          {{ os_update_board }} — update-engine settled at UPDATE_STATUS_IDLE / NEW_VERSION=0.0.0. Either the
-          server does not serve this architecture (register the {{ os_update_board }}
-          {{ os_update_target_version }} payload for this appid/group in Nebraska) or it is unreachable.
-          Nothing was drained.
+    # -V only labels the update: the pinned sha256 makes sure that the payload is this version.
+    # -A writes only SERVER=disabled at the end: without it, flatcar-update writes back every old SERVER= line.
+    - name: Stage the update payload with flatcar-update
+      changed_when: true
+      ansible.builtin.command:
+        argv:
+          - flatcar-update
+          - -V
+          - "{{ os_update_target_version }}"
+          - -P
+          - "{{ os_update_payload_path }}"
+          - -A
+          - -L
+          - "{{ os_update_local_omaha_port }}"
+          - -M
+          - "{{ os_update_local_payload_port }}"

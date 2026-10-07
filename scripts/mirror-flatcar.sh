@@ -3,16 +3,16 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-# Mirror one Flatcar release into the S3 buckets that Nebraska serves, then print the values
-# needed by the Nebraska "Add Package" dialog. Needs only curl, openssl and gpg.
+# Mirror one Flatcar release into the S3 buckets of the SIGHUP release hosts, then print the
+# immutable.yaml block of the release. Needs only curl, openssl and gpg.
 set -euo pipefail
 
 usage() {
   cat <<'USAGE'
 Usage: mirror-flatcar.sh <version> [arch...]
 
-Mirrors one Flatcar release into the S3 buckets Nebraska serves, verifies every artifact
-against the Flatcar signing key, and prints the values for Nebraska's "Add Package" dialog.
+Mirrors one Flatcar release into the S3 buckets of the SIGHUP release hosts, verifies every
+artifact against the Flatcar signing key or checksum, and prints the immutable.yaml block.
 Defaults to both amd64 and arm64. Artifacts already mirrored are skipped.
 
   mirror-flatcar.sh 4593.2.3              both arches
@@ -27,20 +27,15 @@ Required
 Optional
   CHANNEL                Flatcar channel (default: stable)
   RELEASE_BUCKET         bucket for images/PXE/sysext (default: flatcar-stable-release)
-  UPDATE_BUCKET          bucket for the Omaha payload (default: nebraska-flatcar-updates)
-  PACKAGE_BASE_URL       public base URL holding <arch>-usr/<version>/
+  UPDATE_BUCKET          bucket for the update payload (default: nebraska-flatcar-updates)
+  PACKAGE_BASE_URL       public base URL holding <arch>-usr/<version>/flatcar_production_update.gz
                          (default: https://update.release.sighup-prod.sighup.io)
   AWS_REGION             SigV4 region (default: us-east-1)
-  RECAP_DIR              where the API payload and immutable.yaml snippet are written
-                         (default: current dir)
+  RECAP_DIR              where the immutable.yaml snippet is written (default: current dir)
   ASSET_BASE_URL         host the immutable.yaml urls point at
                          (default: https://stable.release.sighup-prod.sighup.io)
   DRY_RUN=1              print uploads instead of performing them
   FORCE=1                re-download and re-upload even when already mirrored
-  NEBRASKA_URL           also create the package through the Nebraska API
-  NEBRASKA_TOKEN         token for that API; omit when the endpoint needs no auth
-  NEBRASKA_AUTH_SCHEME   Authorization scheme (default: Bearer; use Pomerium for a service account)
-  NEBRASKA_APP_ID        Nebraska application (default: Flatcar's well-known app id)
 USAGE
 }
 
@@ -63,11 +58,9 @@ REL_SRC="https://${CHANNEL}.release.flatcar-linux.net"
 UPD_SRC="https://update.release.flatcar-linux.net"
 KEY_URL="${FLATCAR_KEY_URL:-https://www.flatcar.org/security/image-signing-key/Flatcar_Image_Signing_Key.asc}"
 KEY_FPR="${FLATCAR_KEY_FPR:-F88CFEDEFF29A5B4D9523864E25D9AED0593B34A}"  # Flatcar Buildbot (Official Builds)
-# Base URL the nodes fetch updates from: the directory that holds <arch>-usr/<version>/.
+# Base URL the nodes fetch the update payload from: the directory that holds <arch>-usr/<version>/.
 # This is the public host in front of the update bucket, not the S3 endpoint.
 PACKAGE_BASE_URL="${PACKAGE_BASE_URL:-https://update.release.sighup-prod.sighup.io}"
-# Flatcar's well-known Omaha application ID.
-NEBRASKA_APP_ID="${NEBRASKA_APP_ID:-e96281a6-d1af-4bde-9a0a-97b76e56dc57}"
 RECAP_DIR="${RECAP_DIR:-$PWD}"
 # Host serving the release artifacts, as installer-immutable's immutable.yaml references them.
 ASSET_BASE_URL="${ASSET_BASE_URL:-https://stable.release.sighup-prod.sighup.io}"
@@ -84,7 +77,6 @@ sha256_file() { openssl dgst -sha256 "$1" | hex; }
 sha256_str() { printf %s "$1" | openssl dgst -sha256 | hex; }
 hmac() { openssl dgst -sha256 -mac HMAC -macopt "hexkey:$1" | hex; }   # data on stdin, hex key
 sum() { if command -v "sha${1}sum" >/dev/null; then "sha${1}sum" "$2"; else shasum -a "$1" "$2"; fi; }
-filesize() { wc -c < "$1" | tr -d ' '; }
 
 # SigV4 signing, path-style. Object keys here are plain names, so no URI escaping.
 # ponytail: the secret is passed to openssl on the command line (visible in ps); move to a
@@ -180,8 +172,6 @@ verify() { # <file>, with <file>.sig and <file>.DIGESTS.asc alongside
   [ -n "$want" ] && [ "$want" = "$got" ] || die "checksum mismatch: $1"
 }
 
-# Values for the Nebraska "Add Package" dialog, and the same payload as JSON for the API.
-# Hash is base64 SHA1, Flatcar Action SHA256 is base64 SHA256, both of the update payload.
 SNIPPET="${RECAP_DIR}/immutable-${VERSION}.yaml"
 
 # sha256 of every artifact, rendered as the block installer-immutable/immutable.yaml expects.
@@ -204,7 +194,7 @@ sha_entry() { # <arch> <filename>
 }
 
 immutable_snippet() {
-  local a key
+  local a key sha
   {
     echo "      - name: flatcar-python"
     echo "        version: ${VERSION}"
@@ -230,70 +220,22 @@ immutable_snippet() {
       echo "          image:"
       echo "            filename: flatcar_production_image.bin.bz2"
       sha_entry "$a" flatcar_production_image.bin.bz2
+      # An assignment, not an argument: a failed fetch must stop the script, not write an empty pin.
+      sha="$(update_sha "$a")" || die "cannot read the upstream sha256 of the ${a} update payload"
+      echo "          update:"
+      echo "            filename: flatcar_production_update.gz"
+      printf '            url: %s/%s-usr/%s/flatcar_production_update.gz\n            sha256: %s\n' \
+        "${PACKAGE_BASE_URL%/}" "$a" "$VERSION" "$sha"
     done
   } > "$SNIPPET"
 }
 
-json_get() { # <field> <file>
-  grep -o "\"$1\": *\"[^\"]*\"" "$2" | head -1 | sed 's/.*: *"//; s/"$//'
-}
-
-# Values for the Nebraska "Add Package" dialog, and the same payload as JSON for the API.
-# Hash is base64 SHA1, Flatcar Action SHA256 is base64 SHA256, both of the update payload.
-recap() { # <arch> <size> <sha1-base64> <sha256-base64>
-  local arch="$1" size="$2" hash="$3" sha256="$4" url arch_id json
-  url="${PACKAGE_BASE_URL%/}/${arch}-usr/${VERSION}/"
-  # Nebraska stores this URL verbatim, so a wrong base silently breaks every node's update.
-  curl -fsIL -o /dev/null --max-time 15 "${url}flatcar_production_update.gz" ||
-    echo "   WARNING: ${url}flatcar_production_update.gz is not reachable - check PACKAGE_BASE_URL" >&2
-  case "$arch" in amd64) arch_id=1 ;; arm64) arch_id=2 ;; *) arch_id=0 ;; esac
-  json="${RECAP_DIR}/nebraska-package-${arch}-${VERSION}.json"
-  cat > "$json" <<JSON
-{
-  "application_id": "${NEBRASKA_APP_ID}",
-  "type": 1,
-  "arch": ${arch_id},
-  "url": "${url}",
-  "filename": "flatcar_production_update.gz",
-  "description": "Flatcar ${CHANNEL} ${VERSION} ${arch}",
-  "version": "${VERSION}",
-  "size": "${size}",
-  "hash": "${hash}",
-  "channels_blacklist": [],
-  "flatcar_action": { "sha256": "${sha256}" }
-}
-JSON
-  cat >> "${WORK}/recap.txt" <<RECAP
-
--- Nebraska > Add Package > ${arch} --
-Type                   Flatcar
-Architecture           $(echo "$arch" | tr '[:lower:]' '[:upper:]')
-URL                    ${url}
-Filename               flatcar_production_update.gz
-Description            Flatcar ${CHANNEL} ${VERSION} ${arch}
-Version                ${VERSION}
-Size                   ${size}
-Hash                   ${hash}
-Flatcar Action SHA256  ${sha256}
-Channels Blacklist     (leave empty)
-API payload            ${json}
-RECAP
-  if [ -n "${NEBRASKA_URL:-}" ]; then
-    # Nebraska behind Pomerium: either point NEBRASKA_URL at a port-forward that skips the proxy,
-    # or use a Pomerium service-account JWT with NEBRASKA_AUTH_SCHEME=Pomerium. No token, no header.
-    local auth=()
-    [ -n "${NEBRASKA_TOKEN:-}" ] && auth=(-H "Authorization: ${NEBRASKA_AUTH_SCHEME:-Bearer} ${NEBRASKA_TOKEN}")
-    curl -fsS -X POST "${NEBRASKA_URL%/}/api/apps/${NEBRASKA_APP_ID}/packages" \
-      "${auth[@]}" \
-      -H "Content-Type: application/json" \
-      --data-binary @"$json" >/dev/null && echo "   created in Nebraska: ${arch} ${VERSION}"
-  fi
-}
-
-nebraska_recap() { # <update.gz> <arch>
-  recap "$2" "$(filesize "$1")" \
-    "$(openssl dgst -sha1 -binary "$1" | base64)" \
-    "$(openssl dgst -sha256 -binary "$1" | base64)"
+# The upstream .sha256 of the update payload is the pin in immutable.yaml: the os-upgrade role checks the
+# download against it, and flatcar-update uses the version only as a label.
+update_sha() { # <arch>; fails when the file is missing or empty
+  local sha
+  sha="$(curl -fsSL "${UPD_SRC}/${1}-usr/${VERSION}/flatcar_production_update.gz.sha256" | cut -d' ' -f1)" &&
+    [ -n "$sha" ] && echo "$sha"
 }
 
 for arch in "${ARCHES[@]}"; do
@@ -326,26 +268,27 @@ for arch in "${ARCHES[@]}"; do
     rm -f "${WORK}/${f}"*
   done
 
-  # Omaha update payload: different host, no signature or digest published there.
+  # Update payload: different host, no signature published there, only a .sha256.
   upd_key="flatcar/${arch}-usr/${VERSION}/flatcar_production_update.gz"
   upd_url="${UPD_SRC}/${arch}-usr/${VERSION}/flatcar_production_update.gz"
-  recap_json="${RECAP_DIR}/nebraska-package-${arch}-${VERSION}.json"
-  if [ -f "$recap_json" ] && in_sync "$UPD_BUCKET" "$upd_key" "$upd_url"; then
+  if in_sync "$UPD_BUCKET" "$upd_key" "$upd_url"; then
     echo ">> ${arch}/flatcar_production_update.gz (already mirrored, skipped)"
-    recap "$arch" "$(json_get size "$recap_json")" \
-      "$(json_get hash "$recap_json")" "$(json_get sha256 "$recap_json")"
   else
     echo ">> ${arch}/flatcar_production_update.gz"
     curl -fL --retry 3 -# -o "${WORK}/flatcar_production_update.gz" "$upd_url"
+    want="$(update_sha "$arch")" || die "cannot read the upstream sha256 of the ${arch} update payload"
+    [ "$(sum 256 "${WORK}/flatcar_production_update.gz" | cut -d' ' -f1)" = "$want" ] ||
+      die "checksum mismatch: ${upd_url}"
     s3_put "${WORK}/flatcar_production_update.gz" "$UPD_BUCKET" "$upd_key"
-    nebraska_recap "${WORK}/flatcar_production_update.gz" "$arch"
     rm -f "${WORK}/flatcar_production_update.gz"
   fi
+  # The nodes download the payload from this URL, so a wrong base breaks every OS upgrade.
+  curl -fsIL -o /dev/null --max-time 15 "${PACKAGE_BASE_URL%/}/${arch}-usr/${VERSION}/flatcar_production_update.gz" ||
+    echo "   WARNING: the payload is not reachable under ${PACKAGE_BASE_URL} - check PACKAGE_BASE_URL" >&2
 done
 
 immutable_snippet
 echo "done: ${VERSION} (${ARCHES[*]})"
-if [ -f "${WORK}/recap.txt" ]; then cat "${WORK}/recap.txt"; fi
 echo
 echo "-- installer-immutable/immutable.yaml (${SNIPPET}) --"
 cat "$SNIPPET"

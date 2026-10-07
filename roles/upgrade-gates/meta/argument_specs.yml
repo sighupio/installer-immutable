@@ -21,7 +21,9 @@ argument_specs:
       node_upgrade_min_free_bytes:
         type: int
         required: false
-        description: Smallest free space, in bytes, that the root file system of the node needs to stage the system extensions.
+        description: >-
+          Smallest free space, in bytes, on the root file system of the node. The system extensions and the Flatcar
+          update payload use this space during the upgrade.
       sysext_targets:
         type: dict
         required: false

@@ -1,3 +1,10 @@
 ---
 # Positive fixture for os-upgrade/os_stage: the variables a real furyctl run provides. MUST pass validate_argument_spec.
 os_update_target_version: 4593.2.3
+os_update_payload_pins:
+  x86-64:
+    url: https://update.release.sighup-prod.sighup.io/amd64-usr/4593.2.3/flatcar_production_update.gz
+    sha256: 42e15966838fb7c63d132e8230716506c37b60cb785e61a0adece4d2bef423d9
+  arm64:
+    url: https://update.release.sighup-prod.sighup.io/arm64-usr/4593.2.3/flatcar_production_update.gz
+    sha256: f520ab474447e52d09af89d35894fb6fc50c78a695f0143ec2a1b76c46d9ed28

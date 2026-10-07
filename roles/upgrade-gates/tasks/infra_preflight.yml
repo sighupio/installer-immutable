@@ -7,7 +7,7 @@
   register: node_upgrade_pf_avail
   changed_when: false
 
-# The sysext store and staging live on /; the OS image goes to the A/B partition, so free space on / is what matters.
+# The sysext store and the downloaded OS payload live on /; the OS image goes to the A/B partition, so free space on / is what matters.
 - name: Assert there is enough free disk to stage the upgrade
   ansible.builtin.assert:
     that:

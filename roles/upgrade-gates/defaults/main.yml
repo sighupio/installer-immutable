@@ -11,5 +11,5 @@ kubernetes_hostname: "{{ ansible_facts['fqdn'] }}"
 sysext_arch: "{{ node_arch | default('arm64' if ansible_facts['architecture'] == 'aarch64' else 'x86-64') }}"
 
 # --- Infrastructure preflight (tasks/infra_preflight.yml) --------------
-# Min free space on / to stage the sysext .raw (OS image goes to the A/B partition); 1 GiB leaves ~9x margin.
-node_upgrade_min_free_bytes: 1073741824
+# Min free space on / for the sysext .raw and the Flatcar update payload (up to ~550 MB) in /var/tmp before the stage.
+node_upgrade_min_free_bytes: 2147483648
