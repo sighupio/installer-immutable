@@ -44,14 +44,8 @@
 
     # Download before any change on the node: a missing or bad payload stops the run here, before the drain.
     - name: Download the update payload
-      # Ansible tasks get no DefaultEnvironment: pass spec.infrastructure.proxy (see sysext/tasks/component.yml).
-      environment:
-        http_proxy: "{{ http_proxy | default('') or omit }}"
-        https_proxy: "{{ https_proxy | default('') or omit }}"
-        no_proxy: "{{ no_proxy | default('') or omit }}"
-        HTTP_PROXY: "{{ http_proxy | default('') or omit }}"
-        HTTPS_PROXY: "{{ https_proxy | default('') or omit }}"
-        NO_PROXY: "{{ no_proxy | default('') or omit }}"
+      # spec.infrastructure.proxy, as in sysext/tasks/component.yml.
+      environment: "{{ proxy_env | default({}) }}"
       # Retry a connection failure instead of stopping the upgrade. A retry downloads the whole payload again,
       # so a checksum that does not match is not retried.
       register: os_update_payload_download

@@ -16,18 +16,9 @@
   when:
     - sysext_comp_stat.stat.exists
     - sysext_comp_stat.stat.islnk
-  # An ansible task runs in a non-login shell, so it gets neither the systemd
-  # DefaultEnvironment nor /etc/profile.env. Without this the downloads below ignore
-  # spec.infrastructure.proxy, and a node with no direct egress cannot upgrade.
-  # 'or omit' drops a variable that is unset or empty, so a proxy that the session
-  # already has is not replaced by an empty value.
-  environment:
-    http_proxy: "{{ http_proxy | default('') or omit }}"
-    https_proxy: "{{ https_proxy | default('') or omit }}"
-    no_proxy: "{{ no_proxy | default('') or omit }}"
-    HTTP_PROXY: "{{ http_proxy | default('') or omit }}"
-    HTTPS_PROXY: "{{ https_proxy | default('') or omit }}"
-    NO_PROXY: "{{ no_proxy | default('') or omit }}"
+  # An ansible task gets neither the systemd DefaultEnvironment nor /etc/profile.env: proxy_env passes
+  # spec.infrastructure.proxy, so that a node with no direct egress can download. Without a proxy it is not set.
+  environment: "{{ proxy_env | default({}) }}"
   block:
     - name: Resolve active vs target file for {{ sysext_comp_name }}
       ansible.builtin.set_fact:
