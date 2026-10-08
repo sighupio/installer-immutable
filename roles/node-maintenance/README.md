@@ -50,7 +50,7 @@ Runs `kubectl drain` for the node on the furyctl host: the node is cordoned and 
 
 Uncordon the node after the upgrade and wait for its pods.
 
-Runs `kubectl uncordon` for the node on the furyctl host, then waits until every pod of the node is running or completed, checking every 15 seconds.
+Runs `kubectl uncordon` for the node on the furyctl host, then waits until every pod of the node is Ready, checking every 15 seconds. Pods that completed are not checked.
 
 | Variable | Type | Required | Description |
 | --- | --- | --- | --- |

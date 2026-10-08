@@ -7,16 +7,18 @@
   delegate_to: localhost
   changed_when: true
 
-- name: Wait for the upgraded node's pods to settle
-  # Scope the pods-settled check to THIS node (--field-selector spec.nodeName); <2 non-Running lines = only the header.
+- name: Wait for the upgraded node's pods to be Ready
+  # Ready, not only Running: the next phase rolls DaemonSets, and a pod deleted while not Ready leaves stale
+  # Cilium LB state (cilium/cilium#44891). <2 non-True lines = only the header.
   when: not skip_pods_running_check
   ansible.builtin.shell:
     cmd: >-
       set -o pipefail;
-      {{ kubectl_bin }} get pods -A -o wide
-      --field-selector spec.nodeName={{ kubernetes_hostname }}
+      {{ kubectl_bin }} get pods -A
+      --field-selector spec.nodeName={{ kubernetes_hostname }},status.phase!=Succeeded
       --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
-      | grep -cvE 'Running|Completed'
+      -o custom-columns='READY:.status.conditions[?(@.type=="Ready")].status'
+      | grep -cv True
     executable: /bin/bash
   become: false
   delegate_to: localhost
