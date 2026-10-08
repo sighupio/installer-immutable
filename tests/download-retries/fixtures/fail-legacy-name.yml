@@ -1,0 +1,7 @@
+---
+# The legacy module name is still a download: the check must report this task.
+- name: Download with the legacy module name and no retry
+  ansible.legacy.get_url:
+    url: https://example.invalid/file
+    dest: /var/tmp/file
+    mode: "0644"

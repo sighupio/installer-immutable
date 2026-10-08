@@ -1,0 +1,14 @@
+---
+# The download sits two blocks deep and has no until: the check must find it and report it.
+- name: Outer block
+  block:
+    - name: Inner block
+      block:
+        - name: Download without until, two blocks deep
+          ansible.builtin.get_url:
+            url: https://example.invalid/file
+            dest: /var/tmp/file
+            mode: "0644"
+          register: fixture_download
+          retries: 5
+          delay: 10

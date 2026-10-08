@@ -18,6 +18,7 @@ TBD
 - The installer no longer masks update-engine, as the Flatcar documentation recommends. `SERVER=disabled` in `/etc/flatcar/update.conf` makes every update check fail, so the node gets no automatic OS update. The upgrade writes this line and unmasks update-engine on each node that it stages.
 - The OS stage now completes before the drain of the node. A missing payload, a bad checksum or a bad signature stops the upgrade while the node still serves.
 - The free space on `/` that the upgrade preflight needs is now 2 GiB, because the role downloads the update payload (400 to 550 MB) to `/var/tmp`.
+- The downloads of the system extensions and of the OS update payload now retry. Before, one failed connection stopped the install or the upgrade at once, and an upgrade could stop with a node already cordoned. Now a download that fails with a connection error or a timeout is tried again 5 times, with 10 seconds between the attempts. When it keeps failing, the log shows a `FAILED - RETRYING` line for each attempt, and the task fails after about 50 seconds with the same error message as before. A download with a checksum that does not match fails at once, as before.
 
 ## New features 🌟
 

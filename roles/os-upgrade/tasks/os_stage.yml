@@ -52,6 +52,14 @@
         HTTP_PROXY: "{{ http_proxy | default('') or omit }}"
         HTTPS_PROXY: "{{ https_proxy | default('') or omit }}"
         NO_PROXY: "{{ no_proxy | default('') or omit }}"
+      # Retry a connection failure instead of stopping the upgrade. A retry downloads the whole payload again,
+      # so a checksum that does not match is not retried.
+      register: os_update_payload_download
+      until: >-
+        os_update_payload_download is succeeded
+        or (os_update_payload_download.msg | default('')) is not search('Request failed|timed out')
+      retries: 5
+      delay: 10
       ansible.builtin.get_url:
         url: "{{ os_update_pin.url }}"
         dest: "{{ os_update_payload_path }}"

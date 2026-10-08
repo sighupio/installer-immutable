@@ -40,6 +40,30 @@ depends = ["lint"]
 description = "Validate role argument specs against fixtures (localhost, no cluster)"
 run = "ansible-playbook tests/argument-specs/validate.yml"
 
+[tasks."test:download-retries"]
+description = "Check that every get_url task of the roles has a retry (fixtures first, then roles/)"
+run = """
+set -eu
+check=scripts/check-download-retries.sh
+fixtures=tests/download-retries/fixtures
+# Prove the check on the fixtures before trusting what it says about roles/.
+"$check" "$fixtures/pass.yml"
+failed=0
+for fixture in "$fixtures"/fail-*.yml; do
+  if report="$("$check" "$fixture" 2>/dev/null)"; then
+    echo "$fixture: the check did not report the download without a retry" >&2
+    failed=1
+  elif ! printf '%s\\n' "$report" | grep -qF "$fixture: "; then
+    echo "$fixture: the report of the check does not name the file" >&2
+    failed=1
+  else
+    echo "$fixture: reported, as expected"
+  fi
+done
+[ "$failed" -eq 0 ]
+"$check" roles
+"""
+
 [tasks."bump-sysext"]
 description = "Bump a sysext in immutable.yaml with its release checksums (see scripts/bump-sysext.sh -h)"
 run = "scripts/bump-sysext.sh"

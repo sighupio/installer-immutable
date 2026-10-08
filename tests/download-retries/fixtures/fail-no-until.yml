@@ -1,0 +1,10 @@
+---
+# retries without until: the check must report this task.
+- name: Download without until
+  ansible.builtin.get_url:
+    url: https://example.invalid/file
+    dest: /var/tmp/file
+    mode: "0644"
+  register: fixture_download
+  retries: 5
+  delay: 10

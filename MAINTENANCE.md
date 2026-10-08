@@ -46,6 +46,7 @@ Tasks live under `[tasks]` in `mise.toml` (no `Makefile`). Configuration is in `
 | `mise run lint-prod`   | Alias of `mise run lint` (the `production` profile is the default).          |
 | `mise run docs`        | Generate the variable reference of every role README (see below).            |
 | `mise run docs-check`  | Check that every role README is up to date; writes nothing.                  |
+| `mise run test:download-retries` | Check that every `get_url` task of the roles has a retry (see `tests/download-retries/README.md`). |
 
 > Note: `mise run lint` runs `ansible-lint` with `profile: production` and `strict: true` by default — there is no looser local profile. Findings against this profile are tracked as follow-up work and are not gated by this section. Run `mise run fmt-check && mise run fmt` to clean YAML formatting drift before sending a PR.
 
