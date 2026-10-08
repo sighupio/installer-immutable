@@ -82,8 +82,8 @@ argument_specs:
   uncordon.yml:
     short_description: Uncordon the node after the upgrade and wait for its pods.
     description: >-
-      Runs C(kubectl uncordon) for the node on the furyctl host, then waits until every pod of the node is running or
-      completed, checking every 15 seconds.
+      Runs C(kubectl uncordon) for the node on the furyctl host, then waits until every pod of the node is Ready,
+      checking every 15 seconds. Pods that completed are not checked.
     options:
       kubectl_bin:
         type: str
