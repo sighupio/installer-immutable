@@ -1,0 +1,15 @@
+---
+# An always section is a list of tasks too: the check must report the download in it.
+- name: Try and clean up
+  block:
+    - name: Create a directory
+      ansible.builtin.file:
+        path: /var/tmp/dir
+        state: directory
+        mode: "0755"
+  always:
+    - name: Download in an always section, with no retry
+      ansible.builtin.get_url:
+        url: https://example.invalid/file
+        dest: /var/tmp/file
+        mode: "0644"

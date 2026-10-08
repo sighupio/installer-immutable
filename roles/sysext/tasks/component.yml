@@ -46,7 +46,15 @@
             mode: "0755"
 
         # get_url renames only on success and verifies the .raw against SHA256SUMS, so a bad/partial download never activates.
+        # Retry a connection failure: one refused connection here stopped an upgrade with the node cordoned.
+        # A checksum that does not match is not retried: another download cannot fix it.
         - name: Download the target .raw from the upstream release
+          register: sysext_comp_raw_download
+          until: >-
+            sysext_comp_raw_download is succeeded
+            or (sysext_comp_raw_download.msg | default('')) is not search('Request failed|timed out')
+          retries: 5
+          delay: 10
           ansible.builtin.get_url:
             url: "{{ sysext_comp_url }}"
             dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/{{ sysext_comp_target_file }}"
@@ -59,7 +67,14 @@
         - name: Verify the {{ sysext_comp_name }} signature
           when: sysext_verify_signature | bool
           block:
+            # Same retry as the .raw: a transient failure here would stop the upgrade at the same point.
             - name: Fetch SHA256SUMS for {{ sysext_comp_name }}
+              register: sysext_comp_sums_download
+              until: >-
+                sysext_comp_sums_download is succeeded
+                or (sysext_comp_sums_download.msg | default('')) is not search('Request failed|timed out')
+              retries: 5
+              delay: 10
               ansible.builtin.get_url:
                 url: "{{ sysext_comp_url | dirname }}/SHA256SUMS"
                 dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS"
@@ -67,7 +82,14 @@
                 group: root
                 mode: "0644"
 
+            # Same retry as the .raw: a transient failure here would stop the upgrade at the same point.
             - name: Fetch the SHA256SUMS signature for {{ sysext_comp_name }}
+              register: sysext_comp_signature_download
+              until: >-
+                sysext_comp_signature_download is succeeded
+                or (sysext_comp_signature_download.msg | default('')) is not search('Request failed|timed out')
+              retries: 5
+              delay: 10
               ansible.builtin.get_url:
                 url: "{{ sysext_comp_url | dirname }}/SHA256SUMS.{{ sysext_signature_ext }}"
                 dest: "{{ sysext_extensions_store }}/{{ sysext_comp_name }}/SHA256SUMS.{{ sysext_signature_ext }}"

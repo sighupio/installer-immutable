@@ -1,0 +1,45 @@
+---
+# Every download here has until and retries: the check must report nothing.
+- name: Download with the full module name
+  ansible.builtin.get_url:
+    url: https://example.invalid/file
+    dest: /var/tmp/file
+    mode: "0644"
+  register: fixture_download
+  until: fixture_download is succeeded
+  retries: 5
+  delay: 10
+
+- name: Outer block
+  block:
+    - name: Inner block
+      block:
+        - name: Download with the legacy module name, two blocks deep
+          ansible.legacy.get_url:
+            url: https://example.invalid/file
+            dest: /var/tmp/file
+            mode: "0644"
+          register: fixture_download_nested
+          until: fixture_download_nested is succeeded
+          retries: 5
+          delay: 10
+  rescue:
+    - name: Download with the short module name, in a rescue section
+      get_url:
+        url: https://example.invalid/file
+        dest: /var/tmp/file
+        mode: "0644"
+      register: fixture_download_rescue
+      until: fixture_download_rescue is succeeded
+      retries: 5
+      delay: 10
+
+# Not a download: a task of another module needs no retry, even with a variable named get_url.
+- name: Create a directory
+  vars:
+    fixture_options:
+      get_url: false
+  ansible.builtin.file:
+    path: /var/tmp/dir
+    state: directory
+    mode: "0755"
