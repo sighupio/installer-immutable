@@ -1,26 +1,15 @@
 ---
 # os-upgrade: Flatcar A/B layer — os_stage stages on the inactive partition, os_reboot reboots and marks good.
 
-# --- Layer toggles (false by default → the role makes no change) -----------
-# Playbooks set both true; os_stage acts only when the node is behind, os_reboot only when os_update_reboot is set.
-os_update_apply: false
+# --- Layer toggle (false by default → os_reboot does not reboot) -----------
+# Playbooks set it true; os_stage acts only when the node is behind, os_reboot reboots only when this is set.
 os_update_reboot: false
 
 # --- Version targets (provided externally, never read from immutable.yaml here) --------------------------
-# sysext_targets, os_update_target_version, kubernetes_version come from the rendered vars or -e on hand-runs.
+# sysext_targets, os_update_target_version, os_update_payload_pins, kubernetes_version come from the rendered vars or -e on hand-runs.
 
-# --- OS layer (carried over from the os-update role) ------------------------
-# os_update_target_version is the Flatcar version — provided by the rendered playbook vars / inventory for furyctl runs, or -e on hand-runs.
-# os_update_server/os_update_group: the Omaha server+track update-engine queries; override per env/arch via -e or group_vars (arm64 needs an arm64-serving server).
-os_update_server: "https://public.update.sighup-prod.sighup.io/v1/update/"
-os_update_group: "stable"
-# Keep "off": reboot coordination is handled externally (e.g. KureD)
-os_update_reboot_strategy: "off"
-os_update_conf_path: "/etc/flatcar/update.conf"
-# Records the staged version on the node: update-engine forgets NEW_VERSION when restarted
-os_update_marker_path: "/var/lib/flatcar-os-update.staged"
+# --- OS layer ------------------------------------------------------------------
+# Local ports of flatcar-update (-L Omaha answer, -M payload): its defaults 9090/9091 clash with the Calico node metrics port.
+os_update_local_omaha_port: 19090
+os_update_local_payload_port: 19091
 os_update_reboot_timeout: 600
-# Async stage: the Flatcar download runs in parallel with other layers; os_reboot.yml waits on it before rebooting.
-os_update_stage_async_timeout: 2400
-# retries × delay (5s) must stay >= os_update_stage_async_timeout to preserve the full download budget.
-os_update_stage_async_retries: 480

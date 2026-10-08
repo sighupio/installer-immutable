@@ -34,7 +34,7 @@ Fails when the root file system of the node has less free space than [`node_upgr
 
 | Variable | Type | Required | Description |
 | --- | --- | --- | --- |
-| <a id="infra_preflight.yml-variable-node_upgrade_min_free_bytes"></a>`node_upgrade_min_free_bytes` | `int` | No | Smallest free space, in bytes, that the root file system of the node needs to stage the system extensions. |
+| <a id="infra_preflight.yml-variable-node_upgrade_min_free_bytes"></a>`node_upgrade_min_free_bytes` | `int` | No | Smallest free space, in bytes, on the root file system of the node. The system extensions and the Flatcar update payload use this space during the upgrade. |
 | <a id="infra_preflight.yml-variable-sysext_targets"></a>`sysext_targets` | `dict` | No | Targets of the system extensions, in the format of the `sysext_targets` variable of the sysext role. The role checks that the image of every target for the architecture of the node is reachable; when unset, it skips that check. |
 | `sysext_arch` | `str` | No | Architecture of the system extensions of the node, the key into the `arch` map of each target. Defaults to [`node_arch`](#infra_preflight.yml-variable-node_arch) or, when that is not set, to `arm64` on an `aarch64` node and to `x86-64` otherwise. [Details](#infra_preflight.yml-variable-sysext_arch). |
 | `node_arch` | `str` | No | Architecture of the node. When set, it is the default of [`sysext_arch`](#infra_preflight.yml-variable-sysext_arch). [Details](#infra_preflight.yml-variable-node_arch). |
