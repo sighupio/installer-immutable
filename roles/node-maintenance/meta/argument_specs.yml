@@ -5,12 +5,16 @@ argument_specs:
   # not strip the extension when matching the arg spec, so the key must be exact.
   preflight.yml:
     short_description: Decide whether the upgrade must drain the node.
-    description: >-
-      Sets the fact C(node_upgrade_drain_required) to V(true) when the node will reboot for an operating system
-      update, that is when O(os_update_apply) and O(os_update_reboot) are V(true) and the node runs a Flatcar version
-      older than O(os_update_target_version). During an upgrade, it is also V(true) for a worker node, a node of the
-      inventory group C(nodes), that does not run O(kubernetes_version) yet or whose system extensions changed. The
-      role reads the Kubernetes version of the node with C(kubectl) on the furyctl host.
+    description:
+      - >-
+        Sets the fact C(node_upgrade_drain_required) to V(true) when the node will reboot for an operating system
+        update, that is when O(os_update_apply) and O(os_update_reboot) are V(true) and the node runs a Flatcar version
+        older than O(os_update_target_version). During an upgrade, it is also V(true) for a worker node, a node of the
+        inventory group C(nodes), that does not run O(kubernetes_version) yet or whose system extensions changed. The
+        role reads the Kubernetes version of the node with C(kubectl) on the furyctl host.
+      - >-
+        The fact is always V(true) for a node that has the annotation named by O(node_upgrade_drain_marker): an earlier
+        run drained that node and did not uncordon it. The role reads the annotation with C(kubectl) too.
     options:
       upgrade:
         type: bool
@@ -21,7 +25,9 @@ argument_specs:
       kubectl_bin:
         type: str
         required: false
-        description: Path of C(kubectl) on the furyctl host, with which the role reads the Kubernetes version of the node.
+        description: >-
+          Path of C(kubectl) on the furyctl host, with which the role reads the Kubernetes version and the annotations
+          of the node.
       kubernetes_hostname:
         type: str
         required: false
@@ -57,17 +63,25 @@ argument_specs:
         description: >-
           System extensions changed during the run. A non-empty list makes the role drain a worker node during an
           upgrade. When this entry point runs, no system extension has been aligned yet, so the list is empty.
+      node_upgrade_drain_marker:
+        type: str
+        required: false
+        description: >-
+          Key of the annotation that the C(drain.yml) entry point sets on the Kubernetes node and the C(uncordon.yml)
+          entry point removes. A node that has it always gets the drain. Use the same value for the three entry points.
   drain.yml:
     short_description: Drain the node before the disruptive steps of the upgrade.
     description: >-
-      Runs C(kubectl drain) for the node on the furyctl host: the node is cordoned and its pods are evicted, ignoring
+      Sets the annotation O(node_upgrade_drain_marker) to V(true) on the Kubernetes node, then runs C(kubectl drain)
+      for the node on the furyctl host: the node is cordoned and its pods are evicted, ignoring
       DaemonSets and deleting emptyDir data, with a grace period of 60 seconds and a timeout of 6 minutes. Pods that
-      no controller manages are deleted too (C(--force)). A failed drain is retried up to 3 times.
+      no controller manages are deleted too (C(--force)). A failed drain is retried up to 3 times. When the role
+      cannot set the annotation, it fails before the drain.
     options:
       kubectl_bin:
         type: str
         required: false
-        description: Path of C(kubectl) on the furyctl host, with which the role drains the node.
+        description: Path of C(kubectl) on the furyctl host, with which the role annotates and drains the node.
       kubernetes_hostname:
         type: str
         required: false
@@ -79,16 +93,26 @@ argument_specs:
           Directory on the furyctl host, ending with C(/), that holds C(super-admin.conf), the kubeconfig file of
           C(kubectl). The C(fetch_admin_conf.yml) entry point of the upgrade-gates role always writes the file as
           C(./super-admin.conf), whatever the value of this variable is.
+      node_upgrade_drain_marker:
+        type: str
+        required: false
+        description: >-
+          Key of the annotation that the role sets on the Kubernetes node before the drain. The C(preflight.yml) entry
+          point reads it and the C(uncordon.yml) entry point removes it. Use the same value for the three entry points.
   uncordon.yml:
     short_description: Uncordon the node after the upgrade and wait for its pods.
     description: >-
-      Runs C(kubectl uncordon) for the node on the furyctl host, then waits until every pod of the node is Ready,
-      checking every 15 seconds. Pods that completed are not checked.
+      Runs C(kubectl uncordon) for the node on the furyctl host, removes the annotation O(node_upgrade_drain_marker)
+      from the Kubernetes node, then waits until every pod of the node is Ready, checking every 15 seconds. Pods that
+      completed are not checked. The annotation is removed before the wait, so a wait that fails leaves no annotation
+      on a node that is schedulable again.
     options:
       kubectl_bin:
         type: str
         required: false
-        description: Path of C(kubectl) on the furyctl host, with which the role uncordons the node and reads its pods.
+        description: >-
+          Path of C(kubectl) on the furyctl host, with which the role uncordons the node, removes the annotation and
+          reads the pods of the node.
       kubernetes_hostname:
         type: str
         required: false
@@ -110,3 +134,9 @@ argument_specs:
         description: >-
           Number of times, 15 seconds apart, that the role checks the pods of the node again after the first check,
           before it fails.
+      node_upgrade_drain_marker:
+        type: str
+        required: false
+        description: >-
+          Key of the annotation that the role removes from the Kubernetes node after the uncordon. The C(drain.yml)
+          entry point sets it. Use the same value for the three entry points.

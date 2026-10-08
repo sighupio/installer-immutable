@@ -30,10 +30,25 @@
       {{ (os_update_apply | bool) and (os_update_reboot | bool)
          and (ansible_facts['distribution_version'] is version(os_update_target_version, '<')) }}
 
+# drain.yml leaves this annotation and uncordon.yml removes it, so a node that still has it was cordoned by
+# a run that failed inside the window. Quoted, with the dots of the key escaped: jsonpath splits on a bare dot.
+- name: Read the drain marker of the node
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} get node {{ kubernetes_hostname }}
+      -o jsonpath='{.metadata.annotations.{{ node_upgrade_drain_marker | replace('.', '\.') }}}'
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+  become: false
+  delegate_to: localhost
+  register: node_upgrade_drain_marker_read
+  changed_when: false
+
 # Drain only when disrupted: a worker behind/with a swapped binary, or any node rebooting for the OS.
+# A marked node gets the window whatever its state: it is at its target, so only the window uncordons it.
 - name: Decide whether the maintenance window (drain) is required
   ansible.builtin.set_fact:
     node_upgrade_drain_required: >-
-      {{ node_upgrade_os_reboot_pending
+      {{ (node_upgrade_drain_marker_read.stdout | length > 0)
+         or node_upgrade_os_reboot_pending
          or ((inventory_hostname in groups['nodes']) and (upgrade | bool)
              and ((node_upgrade_k8s_behind | default(false)) or (sysext_changed_components | length > 0))) }}

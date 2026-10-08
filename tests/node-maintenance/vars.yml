@@ -1,0 +1,16 @@
+---
+# Variables that a furyctl upgrade gives to the role. run.sh adds node_flatcar_version,
+# kubectl_bin and kubernetes_kubeconfig_path. The marker key is not set: the default of the role
+# is the one under test.
+upgrade: true
+os_update_apply: true
+os_update_reboot: true
+os_update_target_version: 4459.2.1
+kubernetes_version: v1.36.5
+kubernetes_hostname: "{{ inventory_hostname }}"
+# The smallest wait that can fail: with 0 retries Ansible runs the task once and never evaluates
+# "until", so not-Ready pods would pass. With 1, a failing wait costs one 15-second delay.
+pods_running_retries: 1
+# Facts are not gathered (the host is not a Flatcar node): the preflight reads only this one.
+ansible_facts:
+  distribution_version: "{{ node_flatcar_version }}"

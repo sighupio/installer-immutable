@@ -64,6 +64,10 @@ done
 "$check" roles
 """
 
+[tasks."test:node-maintenance"]
+description = "Run the node-maintenance task files against a stub kubectl (localhost, no cluster)"
+run = "tests/node-maintenance/run.sh"
+
 [tasks."bump-sysext"]
 description = "Bump a sysext in immutable.yaml with its release checksums (see scripts/bump-sysext.sh -h)"
 run = "scripts/bump-sysext.sh"

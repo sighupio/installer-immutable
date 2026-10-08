@@ -94,6 +94,20 @@ steps:
       - eval "$(mise activate bash --shims)"
       - "mise run test:download-retries"
 
+  - name: test node-maintenance
+    image: quay.io/sighup/mise:v2026.6.14
+    pull: always
+    depends_on:
+      - install-tools
+    environment:
+      MISE_DATA_DIR: /mise-data
+    volumes:
+      - name: mise-cache
+        path: /mise-data
+    commands:
+      - eval "$(mise activate bash --shims)"
+      - "mise run test:node-maintenance"
+
   - name: docs-check
     image: quay.io/sighup/mise:v2026.6.14
     pull: always

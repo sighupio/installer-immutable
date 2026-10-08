@@ -1,0 +1,32 @@
+---
+# The maintenance window of one node, in the order and under the "when" conditions of the upgrade
+# playbooks of the distribution (templates/kubernetes/immutable/upgrade-worker-nodes.yml.tpl and
+# upgrade-control-plane.yml.tpl). The steps between the drain and the uncordon (the roles, the
+# reboot, the sanity check) need a node and are left out.
+- name: Open and close the maintenance window of a node
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Decide the maintenance window
+      ansible.builtin.include_role:
+        name: node-maintenance
+        tasks_from: preflight.yml
+
+    - name: Open the maintenance window (cordon + drain)
+      when: node_upgrade_drain_required
+      ansible.builtin.include_role:
+        name: node-maintenance
+        tasks_from: drain.yml
+
+    # A run that fails between the drain and the uncordon ends here: the defect of the failed upgrade.
+    - name: Stop like an upgrade that fails after the drain
+      when: stop_after_drain | default(false) | bool
+      ansible.builtin.meta: end_play
+
+    - name: Close the maintenance window (uncordon + wait for pods)
+      when: node_upgrade_drain_required
+      ansible.builtin.include_role:
+        name: node-maintenance
+        tasks_from: uncordon.yml

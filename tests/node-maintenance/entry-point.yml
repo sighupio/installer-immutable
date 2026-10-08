@@ -1,0 +1,19 @@
+---
+# Runs one entry point of the node-maintenance role on its own, the way an upgrade playbook
+# includes it. Variables come from run.sh; kubectl_bin is the stub, so no cluster is reached.
+- name: Run one entry point of node-maintenance
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Include the entry point
+      ansible.builtin.include_role:
+        name: node-maintenance
+        tasks_from: "{{ entry_point }}"
+
+    # run.sh reads the decision from this line of the output.
+    - name: Report the decision of the preflight
+      when: entry_point == 'preflight.yml'
+      ansible.builtin.debug:
+        msg: "node_upgrade_drain_required={{ node_upgrade_drain_required | bool | string | lower }}"

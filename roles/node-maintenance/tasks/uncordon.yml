@@ -7,6 +7,18 @@
   delegate_to: localhost
   changed_when: true
 
+# Before the pod wait: a wait that times out fails the play, and a marker left on a schedulable node
+# would make the next upgrade drain it for nothing. Removing an absent annotation is not an error.
+- name: Remove the marker of the drain
+  ansible.builtin.command:
+    cmd: >-
+      {{ kubectl_bin }} annotate node {{ kubernetes_hostname }}
+      {{ node_upgrade_drain_marker }}-
+      --kubeconfig {{ kubernetes_kubeconfig_path }}super-admin.conf
+  become: false
+  delegate_to: localhost
+  changed_when: true
+
 - name: Wait for the upgraded node's pods to be Ready
   # Ready, not only Running: the next phase rolls DaemonSets, and a pod deleted while not Ready leaves stale
   # Cilium LB state (cilium/cilium#44891). <2 non-True lines = only the header.
