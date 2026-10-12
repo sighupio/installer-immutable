@@ -84,8 +84,8 @@
         kubectl -n kube-system get {{ item.resource }} --kubeconfig /etc/kubernetes/super-admin.conf
         -o jsonpath={.spec.template.spec.containers[0].image}
       loop:
-        - { phase: addon/coredns, resource: deployment/coredns }
-        - { phase: addon/kube-proxy, resource: daemonset/kube-proxy }
+        - {phase: addon/coredns, resource: deployment/coredns}
+        - {phase: addon/kube-proxy, resource: daemonset/kube-proxy}
       loop_control:
         label: "{{ item.resource }}"
       when: item.phase not in kubeadm_skip_phases
