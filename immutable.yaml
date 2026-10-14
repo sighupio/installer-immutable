@@ -214,14 +214,14 @@ kubernetes:
     kubeletCsrApproverTag: v1.0
     sysext:
       - name: containerd
-        version: 2.3.6
+        version: 2.3.7
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-x86-64.raw
-            sha256: 51f68df4f970a9b6b3b002372d588bf9044c8ec76704c54bd8e2b8e29ba683d8
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.7/containerd-2.3.7-x86-64.raw
+            sha256: bea0640b868924657c215bec82c575b815ea27b5f6d5082a0f619c1f46bfad6b
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-arm64.raw
-            sha256: 91d2abd50c4e688b34d80f4573d6a3c34315af9a041bf681c1ee7e7b9dcd7615
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.7/containerd-2.3.7-arm64.raw
+            sha256: 3f98cd9c2466ca88d4548874d820d6bb6084aebbb4f138c95ca660970a6cb4ca
       - name: kubernetes
         version: v1.35.9
         version_major_minor: v1.35
@@ -315,14 +315,14 @@ kubernetes:
     kubeletCsrApproverTag: v1.0
     sysext:
       - name: containerd
-        version: 2.3.6
+        version: 2.3.7
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-x86-64.raw
-            sha256: 51f68df4f970a9b6b3b002372d588bf9044c8ec76704c54bd8e2b8e29ba683d8
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.7/containerd-2.3.7-x86-64.raw
+            sha256: bea0640b868924657c215bec82c575b815ea27b5f6d5082a0f619c1f46bfad6b
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.6/containerd-2.3.6-arm64.raw
-            sha256: 91d2abd50c4e688b34d80f4573d6a3c34315af9a041bf681c1ee7e7b9dcd7615
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/containerd-2.3.7/containerd-2.3.7-arm64.raw
+            sha256: 3f98cd9c2466ca88d4548874d820d6bb6084aebbb4f138c95ca660970a6cb4ca
       - name: kubernetes
         version: v1.36.5
         version_major_minor: v1.36
