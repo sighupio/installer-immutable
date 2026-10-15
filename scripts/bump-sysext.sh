@@ -54,15 +54,22 @@ for k8s in "$@"; do
   echo "Kubernetes $k8s: $name $version"
 
   if [[ -n "$notes" ]]; then
-    # Replace the version cell of the "[name](...)" row in the "### Kubernetes v<k8s>" table,
-    # and keep the cell width.
+    # In the version cell of the "[name](...)" row in the "### Kubernetes v<k8s>" table, replace
+    # each occurrence of the old `version` (text and link) and keep the cell width.
     tmp="$(mktemp)"
-    awk -v sec="### Kubernetes v$k8s" -v row="| [$name](" -v new="\`${version#v}\`" '
+    awk -v sec="### Kubernetes v$k8s" -v row="| [$name](" -v new="${version#v}" '
       /^### / { in_sec = ($0 == sec) }
       in_sec && index($0, row) == 1 {
         n = split($0, c, "|")
         w = length(c[3])
-        c[3] = sprintf(" %-" (w > length(new) + 2 ? w - 2 : length(new)) "s ", new)
+        if (!match(c[3], /`[^`]+`/)) { print "no `version` in the " row " row of " sec > "/dev/stderr"; exit 1 }
+        old = substr(c[3], RSTART + 1, RLENGTH - 2)
+        sub(/^v/, "", old)
+        s = c[3]; out = ""
+        while ((p = index(s, old)) > 0) { out = out substr(s, 1, p - 1) new; s = substr(s, p + length(old)) }
+        s = out s
+        sub(/ +$/, "", s)
+        c[3] = sprintf("%-" (w - 1) "s ", s)
         line = c[1]
         for (i = 2; i <= n; i++) line = line "|" c[i]
         $0 = line
