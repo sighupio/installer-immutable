@@ -31,9 +31,9 @@ argument_specs:
         default: false
         description: >-
           Whether keepalived runs on control-plane nodes. When V(true), keepalived checks every 3 seconds that the
-          Kubernetes API server answers on C(https://localhost:6443/healthz); when V(false), it checks every 2
-          seconds that an HAProxy process runs on the node. The result of the check changes the VRRP priority of the
-          node.
+          Kubernetes API server answers C(https://localhost:6443/healthz) with a success status; when V(false), it
+          checks every 2 seconds that an HAProxy process runs on the node. The result of the check changes the VRRP
+          priority of the node.
       keepalived_passphrase:
         type: str
         required: false
