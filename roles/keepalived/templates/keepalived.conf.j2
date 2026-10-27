@@ -9,7 +9,8 @@ global_defs {
 
 {% if keepalived_on_controlplane %}
 vrrp_script check_api_server {
-  script "/etc/keepalived/check_api_server.sh"
+  # Not a script file in /etc: /etc is noexec on Flatcar.
+  script "/usr/bin/curl --fail --silent --max-time 2 --insecure https://localhost:6443/healthz -o /dev/null"
   interval 3
   weight -2
   fall 10
