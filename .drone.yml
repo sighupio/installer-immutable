@@ -3,6 +3,9 @@ kind: pipeline
 type: docker
 name: QA
 
+node:
+  performance: low
+
 volumes:
   - name: mise-cache
     host:
@@ -111,6 +114,9 @@ steps:
 name: release
 kind: pipeline
 type: docker
+
+node:
+  performance: low
 
 depends_on:
   - QA
