@@ -15,7 +15,7 @@ docs inline on first mention.
 
 ## Prerequisites
 
-The Immutable kind is **alpha** and is driven entirely by [`furyctl`][furyctl] — install **furyctl ≥ 0.34.2**
+The Immutable kind is **beta** and is driven entirely by [`furyctl`][furyctl] — install **furyctl ≥ 0.34.2**
 (see the [compatibility matrix][compatibility-matrix]). Before you start, gather:
 
 - **A furyctl host** — a machine that runs furyctl and whose built-in boot server (HTTP, default port `8080`)
