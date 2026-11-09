@@ -10,7 +10,7 @@ Kubernetes Installer for Immutable Kind
 <!-- markdownlint-enable MD033 -->
 
 > [!WARNING]
-> The Immutable Installer is in **alpha** status and is under active development. Its configuration and behavior can
+> The Immutable Installer is in **beta**. Its configuration and behavior can
 > change between releases.
 
 <!-- <SD-DOCS> -->
