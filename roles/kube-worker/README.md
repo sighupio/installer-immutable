@@ -61,8 +61,6 @@ During an upgrade, the role does not apply the kubelet configuration in place: i
 | <a id="variable-kubectl_bin"></a>`kubectl_bin` | `str` | No | — | Path of `kubectl` on the furyctl host, with which the role reads the current Kubernetes version of the node during an upgrade. This role has no default for it; the node-maintenance and upgrade-gates roles define `kubectl` as their own default. |
 | <a id="variable-kubernetes_kubeconfig_path"></a>`kubernetes_kubeconfig_path` | `path` | No | — | Directory on the furyctl host, ending with `/`, that holds `super-admin.conf`, with which the role reads the current Kubernetes version of the node during an upgrade. This role has no default for it. |
 | <a id="variable-kubernetes_version"></a>`kubernetes_version` | `str` | Yes | — | Target Kubernetes version of an upgrade. The role reads it only during an upgrade, and refuses a target more than one minor version away from the version of the node before it runs `kubeadm upgrade node`. The check runs after the reboot step, so it cannot prevent the reboot into the staged system extensions. |
-| <a id="variable-kubelet_certificate_authority_file"></a>`kubelet_certificate_authority_file` | `path` | No | `/etc/kubernetes/pki/ca.crt` | Path on the node of the CA certificate with which the API server verifies the serving certificates of the kubelets. The kube-control-plane role uses it; the kube-worker role does not read it. |
-| `tls_cipher_suites` | `list` | No | [See details](#variable-tls_cipher_suites) | TLS cipher suites that the API server, the scheduler and the controller manager accept. The kube-control-plane role uses it; the kube-worker role does not read it. [Details](#variable-tls_cipher_suites). |
 
 ### `kubelet_config_cgroup_driver`<a id="variable-kubelet_config_cgroup_driver"></a>
 
@@ -84,28 +82,6 @@ Default:
   "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
   "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
-]
-```
-
-### `tls_cipher_suites`<a id="variable-tls_cipher_suites"></a>
-
-TLS cipher suites that the API server, the scheduler and the controller manager accept. The kube-control-plane role uses it; the kube-worker role does not read it.
-
-Default:
-
-```json
-[
-  "TLS_AES_128_GCM_SHA256",
-  "TLS_AES_256_GCM_SHA384",
-  "TLS_CHACHA20_POLY1305_SHA256",
-  "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
-  "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
-  "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
-  "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
-  "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-  "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-  "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
-  "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"
 ]
 ```
 
