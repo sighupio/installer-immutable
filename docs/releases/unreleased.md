@@ -16,4 +16,4 @@ TBD
 
 ## New features 🌟
 
-TBD
+- containerd: the containerd configuration now imports each `/etc/containerd/conf.d/*.toml` file. To add containerd settings to a node, for example a runtime, write a drop-in in this directory with the `storage.files` of the node. During an upgrade, the new configuration takes effect when the node reboots.
