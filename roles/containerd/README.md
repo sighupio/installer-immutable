@@ -29,6 +29,20 @@ When the variables `http_proxy`, `https_proxy` and `no_proxy` are defined, the r
 They can also be set for the whole system, as the Flatcar documentation explains in
 [System-wide environment variables](https://www.flatcar.org/docs/latest/setup/systemd/environment-variables/#system-wide-environment-variables).
 
+## Drop-in configuration files
+
+The containerd configuration imports each `/etc/containerd/conf.d/*.toml` file. containerd reads `config.toml`
+first, then each import. An import merges its maps into the configuration and replaces its simple values. Thus a
+drop-in can add settings, for example a runtime, without a change to the role.
+
+The role does not manage `conf.d`. To add a drop-in to a node, write it with the `storage.files` of the node in the
+cluster configuration. containerd reads a new or changed drop-in only when it starts again.
+
+A drop-in can also replace a value that the role sets, for example the sandbox image or `default_runtime_name`. The
+role does not detect this. Use drop-ins only to add settings.
+
+If a drop-in is not valid TOML, containerd does not start, and the node cannot start new pods.
+
 <!-- ANSIBLE DOCSMITH MAIN START -->
 ## Role variables
 
