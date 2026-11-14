@@ -1,0 +1,13 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# What the play of the nodes keeps on each node, and when it removes it.
+# /usr is read-only on Flatcar and /tmp may be noexec; one directory, so that the
+# cleanup is a single removal.
+cis_node_dir: /opt/kube-bench
+cis_keep: "{{ cis_keep_on_node | default(false) | bool }}"
+# cis_reached is registered by the first task on the node: a node never reached has
+# nothing to remove.
+cis_remove_from_node: "{{ not cis_keep and not (cis_reached.unreachable | default(false)) }}"

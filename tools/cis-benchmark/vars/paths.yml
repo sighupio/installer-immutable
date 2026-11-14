@@ -1,0 +1,14 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Where kube-bench is kept on localhost, for the play that downloads it and the play
+# that copies it to the nodes.
+# The cache sits next to the run folders, so that every run of a cluster shares it.
+cis_downloads_dir: "{{ cis_output_dir | dirname }}/.downloads"
+# The name of a release tarball without .tar.gz, and of the folder it is extracted to,
+# up to the architecture.
+cis_kube_bench_package: "kube-bench_{{ cis_kube_bench_version }}_linux_"
+# .furyctl/<name>/cis-benchmark/<UTC>: the cluster is named by the folder furyctl made.
+cis_cluster: "{{ cis_cluster_name | default(cis_output_dir | dirname | dirname | basename) }}"

@@ -1,0 +1,60 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Input: kubernetes_version, and cis_benchmark to skip the resolution.
+# Output: cis_resolved_benchmark, and cis_fallback_version, the mapped minor the Kubernetes
+# version fell back to (empty when it is mapped itself or when cis_benchmark is set).
+- name: Read the version mapping of the vendored profiles
+  ansible.builtin.slurp:
+    src: "{{ cis_tool_dir }}/profiles/config.yaml"
+  register: cis_profiles_config
+
+- name: Resolve the benchmark from the version mapping
+  vars:
+    cis_version_mapping: "{{ (cis_profiles_config.content | b64decode | from_yaml).version_mapping }}"
+  block:
+    # Same walk as mapToBenchmarkVersion of kube-bench 0.12.0 (cmd/common.go): reduce to
+    # major.minor, then decrement the minor, down to 1, until the mapping has it.
+    - name: Resolve the benchmark of the Kubernetes version
+      ansible.builtin.set_fact:
+        cis_kubernetes_minor: "{{ cis_version_parts[0] }}.{{ cis_version_parts[1] }}"
+        cis_mapped_version: "{{ cis_mapped_candidates | first | default('') }}"
+      vars:
+        cis_version_parts: "{{ (kubernetes_version | string).split('.') }}"
+        cis_mapped_candidates: >-
+          {%- set found = [] -%}
+          {%- for minor in ([cis_version_parts[1] | int] + range(cis_version_parts[1] | int, 0, -1) | list) | unique -%}
+          {%- if cis_version_parts[0] ~ '.' ~ minor in cis_version_mapping -%}
+          {%- set _ = found.append(cis_version_parts[0] ~ '.' ~ minor) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ found }}
+
+    - name: Check that the Kubernetes version maps to a benchmark
+      ansible.builtin.assert:
+        that:
+          - cis_benchmark is defined or cis_mapped_version | length > 0
+        fail_msg: >-
+          The profiles map no benchmark to Kubernetes {{ kubernetes_version }}, nor to an
+          earlier minor. Set cis_benchmark to choose one.
+        quiet: true
+
+    - name: Record the resolved benchmark
+      ansible.builtin.set_fact:
+        cis_resolved_benchmark: "{{ cis_benchmark | default(cis_version_mapping[cis_mapped_version]) }}"
+        cis_fallback_version: >-
+          {{ '' if cis_benchmark is defined or cis_mapped_version == cis_kubernetes_minor else cis_mapped_version }}
+
+- name: Look for the profiles of the benchmark
+  ansible.builtin.stat:
+    path: "{{ cis_tool_dir }}/profiles/{{ cis_resolved_benchmark }}"
+  register: cis_benchmark_dir
+
+- name: Check that the benchmark is vendored
+  ansible.builtin.assert:
+    that:
+      - cis_benchmark_dir.stat.isdir | default(false)
+    fail_msg: The profiles of the tool do not include the benchmark {{ cis_resolved_benchmark }}.
+    quiet: true

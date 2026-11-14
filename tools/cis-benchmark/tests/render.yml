@@ -1,0 +1,277 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Fixture test of the tool, on localhost: no node, no cluster, no download. It runs the
+# task files and the vars files the playbook runs. After an intended change of a template,
+# regenerate the golden files with -e cis_update_golden=true and review their diff.
+- name: Test the CIS benchmark tool on fixtures
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ../vars/versions.yml
+    - ../vars/paths.yml
+    - ../vars/node.yml
+  vars:
+    cis_tool_dir: "{{ playbook_dir }}/.."
+    # A furyctl layout, so that the cluster name is derived as in a real run.
+    cis_run_dir: "{{ cis_test_dir.path }}/.furyctl/fixture/cis-benchmark/20260927T162109Z"
+    cis_audit_markers: fixture-(actual-value|audit-env|audit-config)|grep -v grep
+    cis_fixture_nodes:
+      - host: cp1.example.test
+        short: cp1
+        role: control-plane
+        targets: [master, etcd, controlplane, node]
+        error: ""
+      - host: etcd1.example.test
+        short: etcd1
+        role: etcd
+        targets: [etcd]
+        error: ""
+      - host: worker1.example.test
+        short: worker1
+        role: worker
+        targets: [node]
+        error: ""
+      - host: worker2.example.test
+        short: worker2
+        role: worker
+        targets: [node]
+        error: "Failed to connect to the host via ssh: connection timed out"
+  tasks:
+    - name: Add the hosts of the validation cases
+      ansible.builtin.add_host:
+        name: "{{ item.name }}"
+        node_arch: "{{ item.arch }}"
+      loop:
+        - {name: amd.valid.test, arch: x86-64}
+        - {name: arm.valid.test, arch: arm64}
+        - {name: s390.valid.test, arch: s390x}
+        - {name: none.valid.test, arch: ""}
+        - {name: cp1.a.test, arch: x86-64}
+        - {name: cp1.b.test, arch: x86-64}
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Assert the validation of the inputs
+      ansible.builtin.include_tasks: tasks/validate.yml
+      loop:
+        - {nodes: [amd.valid.test, arm.valid.test], names: ""}
+        - {nodes: [amd.valid.test], version: "1.35", names: ""}
+        - {nodes: [amd.valid.test], output: relative/run, names: must be an absolute path}
+        - {nodes: [amd.valid.test], output: /abs/run/, names: without a trailing slash}
+        - {nodes: [amd.valid.test], output: /with space/run, names: ""}
+        - {nodes: [], names: hold no host}
+        - {nodes: [amd.valid.test], version: 1.35.x, names: X.Y or X.Y.Z}
+        - {nodes: [amd.valid.test, s390.valid.test], names: s390.valid.test has s390x}
+        - {nodes: [none.valid.test], names: none.valid.test has no node_arch}
+        - {nodes: [cp1.a.test, cp1.b.test, amd.valid.test], names: "cp1.a.test, cp1.b.test."}
+        - {nodes: [amd.valid.test], etcd_on_control_plane: false, names: etcd group of the inventory is empty}
+        - {nodes: [amd.valid.test], etcd_on_control_plane: false, etcd: [amd.valid.test], names: ""}
+      loop_control:
+        loop_var: case
+        label: "{{ case }}"
+
+    - name: Assert when kube-bench is removed from a node
+      ansible.builtin.assert:
+        that:
+          - cis_remove_from_node | bool == item.removed
+        fail_msg: "{{ item }} gave {{ cis_remove_from_node }}."
+        quiet: true
+      loop:
+        - {removed: true, reached: {changed: true}}
+        - {removed: true, reached: {changed: true}, keep: false}
+        - {removed: false, reached: {changed: true}, keep: true}
+        - {removed: false, reached: {changed: true}, keep: "true"}
+        - {removed: false, reached: {unreachable: true}}
+        - {removed: false, reached: {unreachable: true}, keep: true}
+      vars:
+        cis_reached: "{{ item.reached }}"
+        cis_keep_on_node: "{{ item.keep | default(false) }}"
+
+    - name: Assert that the cluster is named by its furyctl folder
+      ansible.builtin.assert:
+        that:
+          - cis_cluster == 'my-cluster'
+        fail_msg: The cluster is named {{ cis_cluster }}.
+        quiet: true
+      vars:
+        cis_output_dir: /srv/demo/.furyctl/my-cluster/cis-benchmark/20260101T000000Z
+
+    - name: Assert that cis_cluster_name names the cluster
+      ansible.builtin.assert:
+        that:
+          - cis_cluster == 'other'
+        fail_msg: The cluster is named {{ cis_cluster }}.
+        quiet: true
+      vars:
+        cis_output_dir: /srv/demo/.furyctl/my-cluster/cis-benchmark/20260101T000000Z
+        cis_cluster_name: other
+
+    - name: Assert the benchmark of every Kubernetes version
+      ansible.builtin.include_tasks: tasks/benchmark.yml
+      loop:
+        - {version: "1.29.0", benchmark: cis-1.11, fallback: ""}
+        - {version: "1.31.9", benchmark: cis-1.11, fallback: ""}
+        - {version: "1.32.0", benchmark: cis-1.12, fallback: ""}
+        - {version: "1.35.8", benchmark: cis-1.12, fallback: ""}
+        - {version: "1.35", benchmark: cis-1.12, fallback: ""}
+        - {version: "1.36.4", benchmark: cis-1.12, fallback: "1.35"}
+        - {version: "1.38.0", benchmark: cis-1.12, fallback: "1.35"}
+        - {version: "1.36.4", benchmark: cis-1.11, fallback: "", override: cis-1.11}
+        - {version: "1.0.0", benchmark: unmapped, fallback: "", names: "1.0.0"}
+        - {version: "0.9.3", benchmark: unmapped, fallback: "", names: "0.9.3"}
+        - {version: "1.36.4", benchmark: unmapped, fallback: "", names: cis-1.10, override: cis-1.10}
+      loop_control:
+        loop_var: case
+        label: "{{ case.version }}"
+
+    - name: Assert the targets of every role
+      ansible.builtin.include_tasks: tasks/targets.yml
+      loop:
+        - groups: {control_plane: [cp1.example.test], nodes: [worker1.example.test]}
+          etcd_on_control_plane: true
+          expected:
+            cp1.example.test: {role: control-plane, targets: "master,etcd,controlplane,node"}
+            worker1.example.test: {role: worker, targets: node}
+        - groups: {control_plane: [cp1.example.test], etcd: [etcd1.example.test]}
+          etcd_on_control_plane: false
+          expected:
+            cp1.example.test: {role: control-plane, targets: "master,controlplane,node"}
+            etcd1.example.test: {role: etcd, targets: etcd}
+        - groups:
+            control_plane: [cp1.example.test, cp2.example.test]
+            etcd: [cp1.example.test, etcd1.example.test]
+            nodes: [cp2.example.test, etcd1.example.test]
+          etcd_on_control_plane: false
+          expected:
+            cp1.example.test: {role: control-plane, targets: "master,etcd,controlplane,node"}
+            cp2.example.test: {role: control-plane, targets: "master,controlplane,node"}
+            etcd1.example.test: {role: etcd, targets: "etcd,node"}
+      loop_control:
+        loop_var: case
+        label: "{{ case.groups }}"
+
+    - name: Assert the fail policy
+      ansible.builtin.include_tasks: tasks/policy.yml
+      loop:
+        - {fail: 1, lost: 0, causes: [1 FAIL result.]}
+        - {fail: 3, lost: 0, fail_on_fail: true, causes: [3 FAIL results.]}
+        - {fail: 3, lost: 0, fail_on_fail: "true", causes: [3 FAIL results.]}
+        - {fail: 3, lost: 0, fail_on_fail: false, causes: []}
+        - {fail: 3, lost: 0, fail_on_fail: "false", causes: []}
+        - {fail: 0, lost: 1, fail_on_fail: false, causes: [1 node without a result.]}
+        - {fail: 1, lost: 2, fail_on_fail: false, causes: [2 nodes without a result.], absent: [FAIL]}
+        - {fail: 2, lost: 1, causes: [2 FAIL results and 1 node without a result.]}
+        - {fail: 0, lost: 0, causes: []}
+      loop_control:
+        loop_var: case
+        label: "{{ case }}"
+
+    - name: Create a folder for the rendered reports
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: cis-benchmark-test.
+      register: cis_test_dir
+
+    - name: Render the fixtures and compare them with the golden files
+      block:
+        - name: Create the output directories
+          ansible.builtin.file:
+            path: "{{ cis_run_dir }}/{{ item }}"
+            state: directory
+            mode: "0700"
+          loop: [nodes, raw]
+
+        - name: Put the fixtures where the nodes' results are collected
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/fixtures/"
+            dest: "{{ cis_run_dir }}/raw/"
+            mode: "0600"
+
+        - name: Resolve the benchmark of the fixture cluster
+          ansible.builtin.include_tasks: ../tasks/benchmark.yml
+          vars:
+            kubernetes_version: "1.36.4"
+
+        - name: Render the reports
+          ansible.builtin.include_tasks: ../tasks/report.yml
+          vars: &cis_fixture_run
+            cis_output_dir: "{{ cis_run_dir }}"
+            cis_report_nodes: "{{ cis_fixture_nodes }}"
+            kubernetes_version: "1.36.4"
+            cis_run_date: "2026-09-27T16:21:09Z"
+
+        - name: Update the golden files
+          ansible.builtin.copy:
+            src: "{{ cis_run_dir }}/{{ item }}"
+            dest: "{{ playbook_dir }}/golden/"
+            mode: "0644"
+          loop: [SUMMARY.md, nodes]
+          when: cis_update_golden | default(false) | bool
+
+        - name: Compare the rendered reports with the golden files
+          ansible.builtin.command:
+            argv: [diff, -ru, -x, raw, "{{ playbook_dir }}/golden", "{{ cis_run_dir }}"]
+          changed_when: false
+
+        - name: Find the rendered files
+          ansible.builtin.find:
+            paths: "{{ cis_run_dir }}"
+            recurse: true
+            file_type: any
+          register: cis_rendered
+
+        - name: Assert that the output is private
+          ansible.builtin.assert:
+            that:
+              - cis_rendered.files | length == 10
+              - item.mode == ('0700' if item.isdir else '0600')
+            fail_msg: "{{ item.path }} has mode {{ item.mode }}."
+            quiet: true
+          loop: "{{ cis_rendered.files }}"
+          loop_control:
+            label: "{{ item.path }}"
+
+        # The fixtures carry markers in the fields that must stay in the raw JSON.
+        - name: Assert that the fixtures carry audit output
+          ansible.builtin.command:
+            argv: [grep, -qE, "{{ cis_audit_markers }}", "{{ cis_run_dir }}/raw/{{ item }}.json"]
+          changed_when: false
+          loop: [cp1, worker1]
+
+        - name: Assert that no audit output reached the reports
+          ansible.builtin.command:
+            argv: [grep, -rlE, "{{ cis_audit_markers }}", "{{ cis_run_dir }}/SUMMARY.md", "{{ cis_run_dir }}/nodes"]
+          changed_when: false
+          register: cis_leaks
+          failed_when: cis_leaks.rc != 1
+
+        - name: Apply the fail policy to the fixtures
+          block:
+            - name: Apply the default policy
+              ansible.builtin.include_tasks: ../tasks/policy.yml
+              vars: *cis_fixture_run
+
+            - name: Record that the run succeeded
+              ansible.builtin.set_fact:
+                cis_fixture_error: ""
+          rescue:
+            - name: Record why the run failed
+              ansible.builtin.set_fact:
+                cis_fixture_error: "{{ ansible_failed_result.msg }}"
+
+        - name: Assert that the fixtures fail the run after the reports are written
+          ansible.builtin.assert:
+            that:
+              - "'1 FAIL result and 1 node without a result.' in cis_fixture_error"
+              - "cis_run_dir ~ '/SUMMARY.md' in cis_fixture_error"
+            fail_msg: "The fail policy gave '{{ cis_fixture_error }}'."
+            quiet: true
+      always:
+        - name: Remove the rendered reports
+          ansible.builtin.file:
+            path: "{{ cis_test_dir.path }}"
+            state: absent

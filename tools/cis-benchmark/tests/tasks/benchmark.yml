@@ -1,0 +1,40 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# One case of the version mapping: case.version, case.benchmark, case.fallback, what the
+# error names when the resolution fails (case.names) and, when cis_benchmark is set for
+# the case, case.override.
+- name: Resolve the benchmark of the case
+  block:
+    - name: Resolve without an override
+      ansible.builtin.include_tasks: ../../tasks/benchmark.yml
+      vars:
+        kubernetes_version: "{{ case.version }}"
+      when: case.override is not defined
+
+    - name: Resolve with an override
+      ansible.builtin.include_tasks: ../../tasks/benchmark.yml
+      vars:
+        kubernetes_version: "{{ case.version }}"
+        cis_benchmark: "{{ case.override }}"
+      when: case.override is defined
+  rescue:
+    - name: Record that the resolution failed
+      ansible.builtin.set_fact:
+        cis_resolved_benchmark: unmapped
+        cis_fallback_version: ""
+        cis_resolution_error: "{{ ansible_failed_result.msg | default('') }}"
+
+- name: Assert the benchmark of the case
+  ansible.builtin.assert:
+    that:
+      - cis_resolved_benchmark == case.benchmark
+      - cis_fallback_version == case.fallback
+      - case.benchmark != 'unmapped' or case.names in cis_resolution_error
+    fail_msg: >-
+      Kubernetes {{ case.version }} resolved to {{ cis_resolved_benchmark }} with fallback
+      '{{ cis_fallback_version }}', expected {{ case.benchmark }} with fallback
+      '{{ case.fallback }}'.
+    quiet: true

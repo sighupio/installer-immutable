@@ -1,0 +1,45 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# One case of the fail policy: case.fail, case.lost, case.fail_on_fail when the switch is
+# set, and case.causes, the causes the failure names (none when the run succeeds).
+- name: Apply the fail policy of the case
+  block:
+    - name: Forget the failure of the case before
+      ansible.builtin.set_fact:
+        cis_policy_error: ""
+
+    - name: Apply the policy with the default switch
+      ansible.builtin.include_tasks: ../../tasks/policy.yml
+      vars:
+        cis_output_dir: /fixture/run
+        cis_report:
+          verdict: "{{ {'fail': case.fail, 'lost': case.lost} }}"
+      when: case.fail_on_fail is not defined
+
+    - name: Apply the policy with the switch set
+      ansible.builtin.include_tasks: ../../tasks/policy.yml
+      vars:
+        cis_output_dir: /fixture/run
+        cis_report:
+          verdict: "{{ {'fail': case.fail, 'lost': case.lost} }}"
+        cis_fail_on_fail: "{{ case.fail_on_fail }}"
+      when: case.fail_on_fail is defined
+  rescue:
+    - name: Record the failure of the case
+      ansible.builtin.set_fact:
+        cis_policy_error: "{{ ansible_failed_result.msg }}"
+
+- name: Assert the outcome of the case
+  ansible.builtin.assert:
+    that:
+      - (cis_policy_error | length > 0) == (case.causes | length > 0)
+      - case.causes | reject('in', cis_policy_error) | list | length == 0
+      - case.absent | default([]) | select('in', cis_policy_error) | list | length == 0
+    fail_msg: >-
+      {{ case.fail }} FAIL and {{ case.lost }} lost nodes with cis_fail_on_fail
+      {{ case.fail_on_fail | default('unset') }} gave '{{ cis_policy_error }}', expected
+      the causes {{ case.causes }}.
+    quiet: true
