@@ -1,0 +1,33 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Input: cis_groups (the hosts of control_plane, etcd and nodes) and
+# cis_etcd_on_control_plane.
+# Output: cis_node_info, one entry per host with its short name, role and targets.
+# The role is the first group that matches; the targets are the union over the groups,
+# in kube-bench's order. policies is never a target: it needs the cluster API, and
+# on-prem removed it from target_mapping for cis-1.10 and later.
+- name: Compute the role and the targets of every node
+  ansible.builtin.set_fact:
+    cis_node_info: >-
+      {%- set info = {} -%}
+      {%- for host in (cis_groups.control_plane + cis_groups.etcd + cis_groups.nodes) | unique -%}
+      {%- set wanted = [] -%}
+      {%- if host in cis_groups.control_plane -%}
+      {%- set _ = wanted.extend(['master', 'controlplane', 'node']) -%}
+      {%- if cis_etcd_on_control_plane -%}{%- set _ = wanted.append('etcd') -%}{%- endif -%}
+      {%- endif -%}
+      {%- if host in cis_groups.etcd -%}{%- set _ = wanted.append('etcd') -%}{%- endif -%}
+      {%- if host in cis_groups.nodes -%}{%- set _ = wanted.append('node') -%}{%- endif -%}
+      {%- set role = 'control-plane' if host in cis_groups.control_plane
+          else ('etcd' if host in cis_groups.etcd else 'worker') -%}
+      {%- set _ = info.update({host: {
+          'short': host.split('.') | first,
+          'role': role,
+          'targets': cis_target_order | select('in', wanted) | list}}) -%}
+      {%- endfor -%}
+      {{ info }}
+  vars:
+    cis_target_order: [master, etcd, controlplane, node]

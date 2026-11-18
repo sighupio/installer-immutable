@@ -1,0 +1,18 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Runs after the reports are written. A node without a result is missing evidence, so it
+# fails the run whatever cis_fail_on_fail is. WARN results never do.
+- name: Fail on FAIL results and on nodes without a result
+  ansible.builtin.fail:
+    msg: "{{ cis_causes | join(' and ') }}. See {{ cis_output_dir }}/SUMMARY.md."
+  when: cis_causes | length > 0
+  vars:
+    cis_failures: "{{ cis_report.verdict.fail if cis_fail_on_fail | default(true) | bool else 0 }}"
+    cis_causes: >-
+      {{ ([cis_failures ~ ' FAIL result' ~ ('' if cis_failures | int == 1 else 's')]
+          if cis_failures | int > 0 else [])
+        + ([cis_report.verdict.lost ~ ' node' ~ ('' if cis_report.verdict.lost == 1 else 's') ~ ' without a result']
+          if cis_report.verdict.lost > 0 else []) }}

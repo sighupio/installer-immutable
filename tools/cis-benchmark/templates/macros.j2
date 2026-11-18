@@ -1,0 +1,7 @@
+{#- Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+    Use of this source code is governed by a BSD-style
+    license that can be found in the LICENSE file. -#}
+{#- A value on one line of a table: a newline would end the row and a pipe would add a cell. -#}
+{%- macro cell(text) -%}
+{{ text | string | replace('\n', ' ') | replace('|', '\\|') | trim }}
+{%- endmacro -%}

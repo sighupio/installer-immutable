@@ -1,0 +1,221 @@
+---
+# Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Runs the CIS Kubernetes Benchmark (kube-bench) on the nodes of a cluster furyctl already
+# installed, and writes Markdown reports. It is a tool, not a step of the installation.
+# Use run.sh, or see README.md to run it directly. Only ansible.builtin is used.
+- name: Validate the inputs and download kube-bench
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/versions.yml
+    - vars/paths.yml
+  vars:
+    cis_tool_dir: "{{ playbook_dir }}"
+    cis_groups:
+      control_plane: "{{ groups['control_plane'] | default([]) }}"
+      etcd: "{{ groups['etcd'] | default([]) }}"
+      nodes: "{{ groups['nodes'] | default([]) }}"
+    cis_nodes: "{{ (cis_groups.control_plane + cis_groups.etcd + cis_groups.nodes) | unique }}"
+    cis_etcd_on_control_plane: "{{ etcd_on_control_plane | default(true) | bool }}"
+    cis_archs: "{{ cis_nodes | map('extract', hostvars, 'node_arch') | map('extract', cis_kube_bench_arch) | unique | sort }}"
+  tasks:
+    - name: Validate the inputs
+      ansible.builtin.import_tasks: tasks/validate.yml
+
+    - name: Resolve the benchmark
+      ansible.builtin.import_tasks: tasks/benchmark.yml
+
+    - name: Compute the targets
+      ansible.builtin.import_tasks: tasks/targets.yml
+
+    - name: Download kube-bench
+      ansible.builtin.import_tasks: tasks/download.yml
+
+    # The folder sits next to keys, and the raw JSON carries the command lines and the
+    # environment of the processes kube-bench audits.
+    - name: Create the output directories
+      ansible.builtin.file:
+        path: "{{ cis_output_dir }}/{{ item }}"
+        state: directory
+        mode: "0700"
+      loop: ["", nodes, raw]
+
+    - name: Record when the run started
+      ansible.builtin.set_fact:
+        cis_run_date: "{{ cis_date | default(now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')) }}"
+
+- name: Run kube-bench on every node
+  hosts: control_plane:etcd:nodes
+  become: true
+  gather_facts: false
+  # A node lost in the middle of the run stays in the play, so that its failure is
+  # recorded like any other and the reports are written even when every node is lost.
+  ignore_unreachable: true
+  vars_files:
+    - vars/versions.yml
+    - vars/paths.yml
+    - vars/node.yml
+  vars:
+    cis_prepared: "{{ hostvars['localhost'] }}"
+    cis_node: "{{ cis_prepared.cis_node_info[inventory_hostname] }}"
+    cis_arch: "{{ cis_kube_bench_arch[node_arch] }}"
+    cis_binary: "{{ cis_downloads_dir }}/{{ cis_kube_bench_package }}{{ cis_arch }}/kube-bench"
+    cis_raw_file: "{{ cis_output_dir }}/raw/{{ cis_node.short }}.json"
+  tasks:
+    # --limit never matches the implicit localhost: with it the first play is skipped,
+    # nothing is validated or downloaded, and no report would be written.
+    - name: Check that the first play ran
+      ansible.builtin.assert:
+        that:
+          - cis_prepared.cis_node_info is defined
+        fail_msg: >-
+          The play of localhost did not run, so nothing was validated. The tool does not
+          support --limit: it benchmarks every node of the inventory.
+        quiet: true
+      any_errors_fatal: true
+
+    - name: Benchmark the node
+      block:
+        # No loop here: the result of a loop hides the message of an unreachable host.
+        - name: Create the kube-bench directory
+          ansible.builtin.file:
+            path: "{{ cis_node_dir }}"
+            state: directory
+            mode: "0700"
+          register: cis_reached
+
+        # An unreachable host is not rescued by Ansible: it is turned into a failure
+        # here, so that it is recorded like any other and the play goes on.
+        - name: Stop when the node is unreachable
+          ansible.builtin.fail:
+            msg: "{{ cis_reached.msg | default('the node is unreachable') }}"
+          when: cis_reached.unreachable | default(false)
+
+        - name: Create the directories of the binary, the profiles and the result
+          ansible.builtin.file:
+            path: "{{ cis_node_dir }}/{{ item }}"
+            state: directory
+            mode: "0700"
+          loop: [bin, cfg, out]
+
+        # A run with cis_keep_on_node leaves its result behind: it must not be fetched
+        # as the result of this run.
+        - name: Remove the result of an earlier run
+          ansible.builtin.file:
+            path: "{{ cis_node_dir }}/out/result.json"
+            state: absent
+
+        - name: Copy kube-bench to the node
+          ansible.builtin.copy:
+            src: "{{ cis_binary }}"
+            dest: "{{ cis_node_dir }}/bin/kube-bench"
+            mode: "0755"
+
+        - name: Copy the profiles to the node
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/profiles/{{ item }}"
+            dest: "{{ cis_node_dir }}/cfg/"
+            mode: "0644"
+            directory_mode: "0755"
+          loop:
+            - config.yaml
+            - "{{ cis_prepared.cis_resolved_benchmark }}"
+
+        # --benchmark spares kube-bench the detection of the Kubernetes version, so it
+        # needs no API access. admin.conf is already on a control plane, written by
+        # kubeadm; it is there for an audit that shells out to kubectl.
+        - name: Run kube-bench
+          ansible.builtin.command:
+            argv:
+              - "{{ cis_node_dir }}/bin/kube-bench"
+              - run
+              - --targets
+              - "{{ cis_node.targets | join(',') }}"
+              - --benchmark
+              - "{{ cis_prepared.cis_resolved_benchmark }}"
+              - --config-dir
+              - "{{ cis_node_dir }}/cfg"
+              - --config
+              - "{{ cis_node_dir }}/cfg/config.yaml"
+              - --json
+              - --outputfile
+              - "{{ cis_node_dir }}/out/result.json"
+          environment: "{{ {'KUBECONFIG': '/etc/kubernetes/admin.conf'} if cis_node.role == 'control-plane' else {} }}"
+          changed_when: false
+          failed_when: false
+          register: cis_kube_bench
+
+        # A node lost before this task is caught here: its result has no rc.
+        - name: Stop when kube-bench failed
+          ansible.builtin.fail:
+            msg: >-
+              {{ cis_kube_bench.msg | default('the node is unreachable')
+              if cis_kube_bench.unreachable | default(false)
+              else 'kube-bench exited with code ' ~ cis_kube_bench.rc ~ ((': ' ~ cis_kube_bench.stderr_lines | last)
+              if cis_kube_bench.stderr_lines | default([]) | length > 0 else '') }}
+          when: cis_kube_bench.unreachable | default(false) or cis_kube_bench.rc != 0
+
+        - name: Fetch the result
+          ansible.builtin.fetch:
+            src: "{{ cis_node_dir }}/out/result.json"
+            dest: "{{ cis_raw_file }}"
+            flat: true
+          register: cis_fetched
+
+        - name: Stop when the result could not be fetched
+          ansible.builtin.fail:
+            msg: "{{ cis_fetched.msg | default('the node is unreachable') }}"
+          when: cis_fetched.unreachable | default(false)
+
+        - name: Restrict the raw result to its owner
+          ansible.builtin.file:
+            path: "{{ cis_raw_file }}"
+            mode: "0600"
+          delegate_to: localhost
+          become: false
+
+        - name: Check that the result is kube-bench JSON
+          ansible.builtin.assert:
+            that:
+              - (lookup('ansible.builtin.file', cis_raw_file) | from_json).Controls is defined
+            fail_msg: kube-bench wrote no result with Controls.
+            quiet: true
+          delegate_to: localhost
+          become: false
+      rescue:
+        - name: Record why the node has no result
+          ansible.builtin.set_fact:
+            cis_error: >-
+              {{ ansible_failed_result.msg | default('the task "' ~ ansible_failed_task.name ~ '" failed') }}
+      always:
+        - name: Remove kube-bench from the node
+          ansible.builtin.file:
+            path: "{{ cis_node_dir }}"
+            state: absent
+          when: cis_remove_from_node | bool
+
+- name: Write the reports
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/versions.yml
+    - vars/paths.yml
+  vars:
+    cis_tool_dir: "{{ playbook_dir }}"
+    cis_report_nodes: >-
+      {%- set nodes = [] -%}
+      {%- for host, node in cis_node_info.items() -%}
+      {%- set _ = nodes.append(node | combine({'host': host, 'error': hostvars[host].cis_error | default('')})) -%}
+      {%- endfor -%}
+      {{ nodes }}
+  tasks:
+    - name: Render the reports
+      ansible.builtin.import_tasks: tasks/report.yml
+
+    - name: Apply the fail policy
+      ansible.builtin.import_tasks: tasks/policy.yml

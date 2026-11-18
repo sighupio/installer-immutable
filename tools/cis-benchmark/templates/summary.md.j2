@@ -1,0 +1,69 @@
+{#- Copyright (c) 2017-present SIGHUP s.r.l All rights reserved.
+    Use of this source code is governed by a BSD-style
+    license that can be found in the LICENSE file. -#}
+{%- from 'macros.j2' import cell -%}
+{%- macro findings(entries) %}
+{% for entry in entries %}
+{% if loop.first %}
+
+| Check | Description | Nodes |
+| --- | --- | --- |
+{% endif %}
+| {{ entry.id }} | {{ cell(entry.text) }} | {{ entry.nodes | join(', ') }} |
+{% else %}
+
+None.
+{% endfor %}
+{% endmacro -%}
+# CIS benchmark summary: {{ cis_cluster }}
+
+| Field | Value |
+| --- | --- |
+| Cluster | {{ cell(cis_cluster) }} |
+| Kubernetes version | {{ kubernetes_version }} |
+| Benchmark | {{ cis_resolved_benchmark }} |
+| Fallback | {{ (cis_kubernetes_minor ~ ' is not mapped by the profiles: it fell back to ' ~ cis_fallback_version) if cis_fallback_version else 'none' }} |
+| kube-bench version | {{ cis_kube_bench_version }} |
+| Profiles source | {{ cis_profiles_source_repo }} |
+| Profiles commit | `{{ cis_profiles_source_commit }}` |
+| Date (UTC) | {{ cis_run_date }} |
+
+## Result
+
+| Result | Count |
+| --- | --- |
+| Nodes with a result | {{ cis_report.nodes | rejectattr('error') | list | length }} of {{ cis_report.nodes | length }} |
+| PASS | {{ cis_report.totals.pass }} |
+| FAIL | {{ cis_report.totals.fail }} |
+| WARN | {{ cis_report.totals.warn }} |
+| INFO | {{ cis_report.totals.info }} |
+| Nodes without a result | {{ cis_report.verdict.lost }} |
+
+## Nodes
+
+| Node | Role | Targets | PASS | FAIL | WARN | INFO |
+| --- | --- | --- | --- | --- | --- | --- |
+{% for node in cis_report.nodes %}
+{% if node.error %}
+| [{{ node.short }}](nodes/{{ node.short }}.md) | {{ node.role }} | {{ node.targets | join(',') }} | no result | no result | no result | no result |
+{% else %}
+| [{{ node.short }}](nodes/{{ node.short }}.md) | {{ node.role }} | {{ node.targets | join(',') }} | {{ node.totals.pass }} | {{ node.totals.fail }} | {{ node.totals.warn }} | {{ node.totals.info }} |
+{% endif %}
+{% endfor %}
+
+## Failures
+{{ findings(cis_report.failures) }}
+## Warnings
+{{ findings(cis_report.warnings) }}
+## Nodes without a result
+{% for node in cis_report.nodes | selectattr('error') %}
+{% if loop.first %}
+
+| Node | Error |
+| --- | --- |
+{% endif %}
+| [{{ node.short }}](nodes/{{ node.short }}.md) | {{ cell(node.error) }} |
+{% else %}
+
+None.
+{% endfor %}
