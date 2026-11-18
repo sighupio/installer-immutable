@@ -2,9 +2,29 @@
 
 Welcome to the release of version TBD of the Immutable installer for the [`SIGHUP Distribution`](https://github.com/sighupio/distribution) maintained by SIGHUP by ReeVo team.
 
+This release updates Flatcar to 4757.2.3 and etcd to 3.6.16 for Kubernetes 1.36.5 and 1.35.9. Kubernetes 1.35.5 and 1.34.8 keep the packages of the previous release.
+
 ## Package Versions 🚢
 
-TBD
+### Kubernetes v1.36.5
+
+| Package                        | Supported Version                                                                         |
+| ------------------------------ | ----------------------------------------------------------------------------------------- |
+| [flatcar](roles/os-upgrade)    | [`4757.2.3`](https://www.flatcar.org/releases#release-4757.2.3) (Linux kernel `6.12.114`) |
+| [etcd](roles/etcd)             | [`3.6.16`](https://github.com/etcd-io/etcd/releases/tag/v3.6.16)                          |
+| [haproxy](roles/haproxy)       | [`3.2.23`](https://www.haproxy.org/download/3.2/src/CHANGELOG)                            |
+| [containerd](roles/containerd) | [`2.3.7`](https://github.com/containerd/containerd/releases/tag/v2.3.7)                   |
+| [keepalived](roles/keepalived) | [`2.4.3`](https://github.com/acassen/keepalived/releases/tag/v2.4.3)                      |
+
+### Kubernetes v1.35.9
+
+| Package                        | Supported Version                                                                         |
+| ------------------------------ | ----------------------------------------------------------------------------------------- |
+| [flatcar](roles/os-upgrade)    | [`4757.2.3`](https://www.flatcar.org/releases#release-4757.2.3) (Linux kernel `6.12.114`) |
+| [etcd](roles/etcd)             | [`3.6.16`](https://github.com/etcd-io/etcd/releases/tag/v3.6.16)                          |
+| [haproxy](roles/haproxy)       | [`3.2.23`](https://www.haproxy.org/download/3.2/src/CHANGELOG)                            |
+| [containerd](roles/containerd) | [`2.3.7`](https://github.com/containerd/containerd/releases/tag/v2.3.7)                   |
+| [keepalived](roles/keepalived) | [`2.4.3`](https://github.com/acassen/keepalived/releases/tag/v2.4.3)                      |
 
 ## Breaking Changes 💔
 

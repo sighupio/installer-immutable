@@ -233,14 +233,14 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.35.9/kubernetes-v1.35.9-arm64.raw
             sha256: 6fd6086faeb76779f51e3d97bc5bf9e7783f99e5163a5f48ebf49fa8a3096bbf
       - name: etcd
-        version: v3.6.15
+        version: v3.6.16
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-x86-64.raw
-            sha256: 838867416722297aff496961c1770f5e3fb19bd11fc1648851d161f5a4d195c8
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.16/etcd-v3.6.16-x86-64.raw
+            sha256: e4b664b024e0a1ddef879189ff1862704c96a6c135afb560ae785f2904764085
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-arm64.raw
-            sha256: 9e8eb6b55755f13347290655e4aaf430e51f1d88ea070dc3b53971fda73cc5a3
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.16/etcd-v3.6.16-arm64.raw
+            sha256: af420ab5a3470b4022a7c5c72019f65190c2b818b80646099c43e2b6d998fb1a
       - name: keepalived
         version: v2.4.3
         arch:
@@ -260,52 +260,52 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.35.9/kubeadm-v1.35.9-arm64.raw
             sha256: c79ae91a1bb9335b9348f5bd8643dc65f67815d7c2d7735c70dcb9b688b9496d
       - name: flatcar-python
-        version: 4757.2.1
+        version: 4757.2.3
         arch:
           x86-64:
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar-python.raw
-            sha256: cb3cf31630ada06768ede22eea9ae8eddd786759784309700982d974f80f2930
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar-python.raw
+            sha256: f6862216e4f482af780d285ca640c69f8ae5153660b18dca3e27c2669aab0365
           arm64:
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar-python.raw
-            sha256: 82486dcc436ae40fdf2fe86b9e9f71ce47d7c2eea0d1f49ed20025a114d09c61
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar-python.raw
+            sha256: 597d488916c84fb3323a0fd685da5a24679af6746b9ec2ec12657b091d46ba08
     flatcar:
-      version: 4757.2.1
+      version: 4757.2.3
       channel: stable
       arch:
         x86-64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_pxe.vmlinuz
-            sha256: 9ead0084909231f16e663ece41177bf1bdae6bc96fd3d90c4d0590581b7342e5
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_pxe.vmlinuz
+            sha256: ec69ab510982d5ec611d567772e44af107ceb1617d2d8a9a0608179ac13b6d21
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_pxe_image.cpio.gz
-            sha256: 04d6899060311fdccc41204586f80a0359fe6f6b1b96cd1cc2541d4cc27ad684
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_pxe_image.cpio.gz
+            sha256: 0b6f30e7a360c33ee3b68f6e3283d89d9a8c887bb1510739f3e16ab9a7507bbb
           image:
             filename: flatcar_production_image.bin.bz2
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_image.bin.bz2
-            sha256: 0ff481d9dc9f5178e0ff3a9455f300bab92c788c8273c79145b11870e90a530d
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_image.bin.bz2
+            sha256: d105566dfa4ce39b6bce681321c07bddbd7ec4cf9c7b019dfb545371093c6bc5
           update:
             filename: flatcar_production_update.gz
-            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_update.gz
-            sha256: 2e0a6f790f226308c6074f361d8b0c2b5e0a7425eec2fbef8472d84c2fa5347f
+            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_update.gz
+            sha256: b5bb70d4fcb2c7e42a15b5ab75516b5d31a6729ec397c8f4efb8336b9bb9e474
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_pxe.vmlinuz
-            sha256: 8a87b01328087cc2d45c85cc1b1dec2e4a0e7c276dc115224b62ca905f3e9435
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_pxe.vmlinuz
+            sha256: 74dfd22028a4919557ba92fdcbfa87d05f37e39411f44d1020c75db4831a8969
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_pxe_image.cpio.gz
-            sha256: 8418ed78aa0a6084d33797f978b8bfb3b7a6820fdf3dcee80f209ba0d8b85755
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_pxe_image.cpio.gz
+            sha256: b27b44349a5b17f6dc32491a7a628857364325c45aadd1fb7226820e582f7919
           image:
             filename: flatcar_production_image.bin.bz2
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_image.bin.bz2
-            sha256: 36eb57007b77d7bc845d7fd1184d91e4a2fd8ff5f6600dd4153cdd6d1c5f83ba
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_image.bin.bz2
+            sha256: b3009cafa5d1625d057a4ba4ae510c08c0b583ba039ef1ab5f40f15bc6affd11
           update:
             filename: flatcar_production_update.gz
-            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_update.gz
-            sha256: b5007fe9d6ac682c65f080bc937fde9ce29de12498d74c6d6b2ebe8bdb972b26
+            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_update.gz
+            sha256: 406190e954b9618462afcd85b75101e62577d0d0bf4bebfccbd28e84fb8b4898
   1.36.5:
     imageRegistry: registry.sighup.io/fury/on-premises
     sandboxTag: "3.10.2"
@@ -334,14 +334,14 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubernetes-v1.36.5/kubernetes-v1.36.5-arm64.raw
             sha256: ce2374afb26f89fb029a9f398a2b32d605358b035cad52da70ce04f4dbee1efa
       - name: etcd
-        version: v3.6.15
+        version: v3.6.16
         arch:
           x86-64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-x86-64.raw
-            sha256: 838867416722297aff496961c1770f5e3fb19bd11fc1648851d161f5a4d195c8
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.16/etcd-v3.6.16-x86-64.raw
+            sha256: e4b664b024e0a1ddef879189ff1862704c96a6c135afb560ae785f2904764085
           arm64:
-            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.15/etcd-v3.6.15-arm64.raw
-            sha256: 9e8eb6b55755f13347290655e4aaf430e51f1d88ea070dc3b53971fda73cc5a3
+            url: https://github.com/sighupio/installer-immutable-sysext/releases/download/etcd-v3.6.16/etcd-v3.6.16-arm64.raw
+            sha256: af420ab5a3470b4022a7c5c72019f65190c2b818b80646099c43e2b6d998fb1a
       - name: keepalived
         version: v2.4.3
         arch:
@@ -361,49 +361,49 @@ kubernetes:
             url: https://github.com/sighupio/installer-immutable-sysext/releases/download/kubeadm-v1.36.5/kubeadm-v1.36.5-arm64.raw
             sha256: c67708931b41df055a121ed0a15fbdf7635849e77fbde877cea64d4e16a819db
       - name: flatcar-python
-        version: 4757.2.1
+        version: 4757.2.3
         arch:
           x86-64:
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar-python.raw
-            sha256: cb3cf31630ada06768ede22eea9ae8eddd786759784309700982d974f80f2930
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar-python.raw
+            sha256: f6862216e4f482af780d285ca640c69f8ae5153660b18dca3e27c2669aab0365
           arm64:
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar-python.raw
-            sha256: 82486dcc436ae40fdf2fe86b9e9f71ce47d7c2eea0d1f49ed20025a114d09c61
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar-python.raw
+            sha256: 597d488916c84fb3323a0fd685da5a24679af6746b9ec2ec12657b091d46ba08
     flatcar:
-      version: 4757.2.1
+      version: 4757.2.3
       channel: stable
       arch:
         x86-64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_pxe.vmlinuz
-            sha256: 9ead0084909231f16e663ece41177bf1bdae6bc96fd3d90c4d0590581b7342e5
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_pxe.vmlinuz
+            sha256: ec69ab510982d5ec611d567772e44af107ceb1617d2d8a9a0608179ac13b6d21
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_pxe_image.cpio.gz
-            sha256: 04d6899060311fdccc41204586f80a0359fe6f6b1b96cd1cc2541d4cc27ad684
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_pxe_image.cpio.gz
+            sha256: 0b6f30e7a360c33ee3b68f6e3283d89d9a8c887bb1510739f3e16ab9a7507bbb
           image:
             filename: flatcar_production_image.bin.bz2
-            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_image.bin.bz2
-            sha256: 0ff481d9dc9f5178e0ff3a9455f300bab92c788c8273c79145b11870e90a530d
+            url: https://stable.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_image.bin.bz2
+            sha256: d105566dfa4ce39b6bce681321c07bddbd7ec4cf9c7b019dfb545371093c6bc5
           update:
             filename: flatcar_production_update.gz
-            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4757.2.1/flatcar_production_update.gz
-            sha256: 2e0a6f790f226308c6074f361d8b0c2b5e0a7425eec2fbef8472d84c2fa5347f
+            url: https://update.release.sighup-prod.sighup.io/amd64-usr/4757.2.3/flatcar_production_update.gz
+            sha256: b5bb70d4fcb2c7e42a15b5ab75516b5d31a6729ec397c8f4efb8336b9bb9e474
         arm64:
           kernel:
             filename: flatcar_production_pxe.vmlinuz
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_pxe.vmlinuz
-            sha256: 8a87b01328087cc2d45c85cc1b1dec2e4a0e7c276dc115224b62ca905f3e9435
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_pxe.vmlinuz
+            sha256: 74dfd22028a4919557ba92fdcbfa87d05f37e39411f44d1020c75db4831a8969
           initrd:
             filename: flatcar_production_pxe_image.cpio.gz
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_pxe_image.cpio.gz
-            sha256: 8418ed78aa0a6084d33797f978b8bfb3b7a6820fdf3dcee80f209ba0d8b85755
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_pxe_image.cpio.gz
+            sha256: b27b44349a5b17f6dc32491a7a628857364325c45aadd1fb7226820e582f7919
           image:
             filename: flatcar_production_image.bin.bz2
-            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_image.bin.bz2
-            sha256: 36eb57007b77d7bc845d7fd1184d91e4a2fd8ff5f6600dd4153cdd6d1c5f83ba
+            url: https://stable.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_image.bin.bz2
+            sha256: b3009cafa5d1625d057a4ba4ae510c08c0b583ba039ef1ab5f40f15bc6affd11
           update:
             filename: flatcar_production_update.gz
-            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4757.2.1/flatcar_production_update.gz
-            sha256: b5007fe9d6ac682c65f080bc937fde9ce29de12498d74c6d6b2ebe8bdb972b26
+            url: https://update.release.sighup-prod.sighup.io/arm64-usr/4757.2.3/flatcar_production_update.gz
+            sha256: 406190e954b9618462afcd85b75101e62577d0d0bf4bebfccbd28e84fb8b4898
