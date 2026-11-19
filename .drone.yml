@@ -113,7 +113,7 @@ steps:
 
   # Check the pins of immutable.yaml against the registry before a tag: a changed file for a pushed version, a
   # wrong sha256 or a bad URL fails here. Anonymous: the sd project is public, so the step needs no secret.
-  - name: oci-dry-run
+  - name: check-sysexts-and-flatcar-for-registry
     image: quay.io/sighup/sd-oci-push-plugin:1.4.0_4.53.6
     pull: always
     depends_on: [clone]
@@ -214,7 +214,7 @@ steps:
 
   # Push the sysext and Flatcar files of immutable.yaml before the installer, so no published installer
   # points to a file that is not in the registry.
-  - name: sync-oci
+  - name: publish-sysexts-and-flatcar-to-registry
     image: quay.io/sighup/sd-oci-push-plugin:1.4.0_4.53.6
     pull: always
     depends_on: [clone]
@@ -230,10 +230,10 @@ steps:
           - refs/tags/v**
 
   # The OCI tag is immutable and the GitHub release is not, so push it after the GitHub release.
-  - name: push-oci
+  - name: publish-installer-to-registry
     image: quay.io/sighup/sd-oci-push-plugin:1.4.0_4.53.6
     pull: always
-    depends_on: [sync-oci, publish-prerelease, publish-stable]
+    depends_on: [publish-sysexts-and-flatcar-to-registry, publish-prerelease, publish-stable]
     settings:
       repository: sd/installers/immutable
       artifact_type: installer
