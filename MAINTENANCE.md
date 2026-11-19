@@ -23,6 +23,24 @@ mise run bump-sysext -n docs/releases/v1.36.5.md etcd v3.6.15 1.35.9 1.36.5
 
 The `-n` option is optional. It also updates the package tables of the release notes. Update the other text of the release notes yourself.
 
+## Removing a Kubernetes version
+
+furyctl reads only one entry of `immutable.yaml`: the Kubernetes version that the SD release sets in `kubernetes.immutable.version` of its `kfd.yaml`. Users cannot select a different Kubernetes version, so an entry that no SD release uses has no effect.
+
+When no maintained SD release line uses a Kubernetes version, remove its entry from `immutable.yaml`. The release pipeline pushes all the files of `immutable.yaml` to `registry.sighup.io/sd/`, and each Flatcar version adds about 3 GB.
+
+To find the Kubernetes version and the installer of an SD release, read its `kfd.yaml`:
+
+```sh
+git -C distribution show v1.36.0:kfd.yaml | yq '.kubernetes.immutable'
+```
+
+The tags of the installer keep their full `immutable.yaml`. To read the pins of an older release:
+
+```sh
+git show v1.36.5:immutable.yaml
+```
+
 ## Lint & format
 
 > [!NOTE]
