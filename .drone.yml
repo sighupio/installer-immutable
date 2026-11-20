@@ -3,9 +3,6 @@ kind: pipeline
 type: docker
 name: QA
 
-node:
-  performance: low
-
 volumes:
   - name: mise-cache
     host:
@@ -110,13 +107,23 @@ steps:
     commands:
       - eval "$(mise activate bash --shims)"
       - mise run docs-check
+
+  # Check the pins of immutable.yaml against the registry before a tag: a changed file for a pushed version, a
+  # wrong sha256 or a bad URL fails here. Anonymous: the sd project is public, so the step needs no secret.
+  - name: check-sysexts-and-flatcar-for-registry
+    image: quay.io/sighup/sd-oci-push-plugin:1.4.0_4.53.6
+    pull: always
+    depends_on: [clone]
+    settings:
+      mode: sync
+      dry_run: true
+    when:
+      event:
+        - pull_request
 ---
 name: release
 kind: pipeline
 type: docker
-
-node:
-  performance: low
 
 depends_on:
   - QA
@@ -196,5 +203,39 @@ steps:
       ref:
         exclude:
           - refs/tags/v**-rc**
+        include:
+          - refs/tags/v**
+
+  # Push the sysext and Flatcar files of immutable.yaml before the installer, so no published installer
+  # points to a file that is not in the registry.
+  - name: publish-sysexts-and-flatcar-to-registry
+    image: quay.io/sighup/sd-oci-push-plugin:1.4.0_4.53.6
+    pull: always
+    depends_on: [clone]
+    settings:
+      mode: sync
+      username:
+        from_secret: sd_registry_username
+      password:
+        from_secret: sd_registry_password
+    when:
+      ref:
+        include:
+          - refs/tags/v**
+
+  # The OCI tag is immutable and the GitHub release is not, so push it after the GitHub release.
+  - name: publish-installer-to-registry
+    image: quay.io/sighup/sd-oci-push-plugin:1.4.0_4.53.6
+    pull: always
+    depends_on: [publish-sysexts-and-flatcar-to-registry, publish-prerelease, publish-stable]
+    settings:
+      repository: sd/installers/immutable
+      artifact_type: installer
+      username:
+        from_secret: sd_registry_username
+      password:
+        from_secret: sd_registry_password
+    when:
+      ref:
         include:
           - refs/tags/v**

@@ -10,8 +10,10 @@ New releases are performed via CI pipelines. To trigger a new release:
 
 1. Make sure that you have the `/docs/releases/<version>.md` file ready with the release notes (IMPORTANT: this file is not a changelog, but releases notes in human readable format with just the relevant information for the users).
 2. Make sure that CI linting and tests are green on `main`.
-3. Tag a release candidate if needed, using the tag format `v<version>-rc.<rc numnber>` (for example, `v1.35.5-rc.0`).
+3. Tag a release candidate if needed, using the tag format `v<version>-rc.<rc numnber>` (for example, `v1.35.5-rc.0`). For a revision, use `v<version>-rev.<X>-rc.<rc number>` (for example, `v1.36.5-rev.1-rc.0`). The release candidate uses the release notes of `v<version>-rev.<X>.md`.
 4. Tag the release with `v<version>` (for example, `v1.35.5`) to trigger the release.
+
+Each tag, also a release candidate, publishes the installer and its files to `registry.sighup.io/sd/` (see [OCI artifacts](#oci-artifacts)).
 
 ## Bumping a system extension
 
@@ -22,6 +24,46 @@ mise run bump-sysext -n docs/releases/v1.36.5.md etcd v3.6.15 1.35.9 1.36.5
 ```
 
 The `-n` option is optional. It also updates the package tables of the release notes. Update the other text of the release notes yourself.
+
+## Removing a Kubernetes version
+
+furyctl reads only one entry of `immutable.yaml`: the Kubernetes version that the SD release sets in `kubernetes.immutable.version` of its `kfd.yaml`. Users cannot select a different Kubernetes version, so an entry that no SD release uses has no effect.
+
+When no maintained SD release line uses a Kubernetes version, remove its entry from `immutable.yaml`. The release pipeline pushes all the files of `immutable.yaml` to `registry.sighup.io/sd/` (see [OCI artifacts](#oci-artifacts)), and each Flatcar version adds about 3 GB.
+
+To find the Kubernetes version and the installer of an SD release, read its `kfd.yaml`:
+
+```sh
+git -C distribution show v1.36.0:kfd.yaml | yq '.kubernetes.immutable'
+```
+
+The tags of the installer keep their full `immutable.yaml`. To read the pins of an older release:
+
+```sh
+git show v1.36.5:immutable.yaml
+```
+
+## OCI artifacts
+
+The CI publishes the installer and the files that `immutable.yaml` pins as OCI artifacts on `registry.sighup.io/sd/`. The steps use the [`sd-oci-push-plugin`](https://github.com/sighupio/generic-container-images/tree/master/sd-oci-push-plugin) Drone plugin.
+
+| Step                                      | When                       | What it does                                                                                                                                                  |
+| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check-sysexts-and-flatcar-for-registry`  | QA, on pull requests only  | Compares the pins of `immutable.yaml` with the registry. Downloads the files that are not in the registry and checks their `sha256`. It does not log in and does not push. |
+| `publish-sysexts-and-flatcar-to-registry` | Release, on each tag       | Pushes each sysext as `sd/sysext/<name>:<version>`, and each Flatcar version as `sd/flatcar/boot:<version>` and `sd/flatcar/update:<version>`.                 |
+| `publish-installer-to-registry`           | Release, on each tag       | Pushes the git tree of the tag as `sd/installers/immutable:<tag>`. It runs after the files and after the GitHub release, so no published installer points to a missing file. |
+
+The tags in `sd/` are immutable: nobody can change or delete them. A tag that already has the same files is skipped, so you can run a failed pipeline again. A tag that has different files fails the step.
+
+- If a step fails with `exists with other files`, a sysext or Flatcar file changed but its version did not. Do not change the `sha256` of a version that is already in the registry. Build the sysext again with a new version, and pin the new version.
+- A release candidate also publishes. Its installer tag, for example `sd/installers/immutable:v1.36.5-rev.1-rc.0`, stays in the registry.
+- The robot account of the registry is in the Drone organization secrets `sd_registry_username` and `sd_registry_password`. Pull requests do not get these secrets, so the check step reads the registry without a login.
+
+To run the check step on your computer, run this command from the root of the repository. The image is for `linux/amd64` only, so a computer with an ARM processor runs it in emulation:
+
+```sh
+docker run --rm --platform linux/amd64 -v "$PWD:/src" -w /src -e PLUGIN_MODE=sync -e PLUGIN_DRY_RUN=true quay.io/sighup/sd-oci-push-plugin:1.4.0_4.53.6
+```
 
 ## Lint & format
 
