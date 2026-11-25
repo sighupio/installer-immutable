@@ -26,7 +26,9 @@ The default values of the variables are in [`defaults/main.yml`](defaults/main.y
 
 Stage a Flatcar operating system update on the inactive partition of the node.
 
-Fails when the node runs a Flatcar version newer than `os_update_target_version`: the role does not support downgrades. When the node runs an older version, the role downloads the payload from the URL in [`os_update_payload_pins`](#os_stage.yml-variable-os_update_payload_pins) and compares its SHA-256 checksum with the pin. Then it stages the payload on the inactive A/B partition with `flatcar-update`. The role does all of this before the upgrade drains the node. Thus a missing or bad payload stops the upgrade while the node still serves. The role contacts no update server: it sets `SERVER=disabled` in `/etc/flatcar/update.conf`, so that every update check of the update engine fails, as Flatcar recommends.
+Fails when the node runs a Flatcar version newer than `os_update_target_version`: the role does not support downgrades. When the node runs an older version, the role downloads the payload from the URL in [`os_update_payload_pins`](#os_stage.yml-variable-os_update_payload_pins) and compares its SHA-256 checksum with the pin. Then it stages the payload on the inactive A/B partition with `flatcar-update`. The role does all of this before the upgrade drains the node. Thus a missing or bad payload stops the upgrade while the node still serves. The update engine contacts no update server: the role sets `SERVER=disabled` in `/etc/flatcar/update.conf`, so that every update check fails, as Flatcar recommends.
+
+For each Flatcar extension that `/etc/flatcar/enabled-sysext.conf` enables (for example `nvidia-drivers-570-open`), the role also downloads `flatcar-<name>.gz` of the target version from [`os_update_extension_base_url`](#os_stage.yml-variable-os_update_extension_base_url) and gives it to `flatcar-update`, which refuses the payload without it. Flatcar checks the signature of each extension before it installs it.
 
 | Variable | Type | Required | Description |
 | --- | --- | --- | --- |
@@ -35,6 +37,7 @@ Fails when the node runs a Flatcar version newer than `os_update_target_version`
 | <a id="os_stage.yml-variable-os_update_local_omaha_port"></a>`os_update_local_omaha_port` | `int` | No | Port on the node of the local update server that `flatcar-update` starts for the update engine. It must not be in use on the node. |
 | `node_arch` | `str` | No | Architecture of the node, the key into [`os_update_payload_pins`](#os_stage.yml-variable-os_update_payload_pins). Defaults to `arm64` on an `aarch64` node and to `x86-64` otherwise. [Details](#os_stage.yml-variable-node_arch). |
 | <a id="os_stage.yml-variable-os_update_local_payload_port"></a>`os_update_local_payload_port` | `int` | No | Port on the node of the local server that `flatcar-update` starts to serve the payload. It must not be in use on the node. |
+| <a id="os_stage.yml-variable-os_update_extension_base_url"></a>`os_update_extension_base_url` | `str` | No | Base URL of the Flatcar extension payloads. Defaults to `https://update.release.flatcar-linux.net`. The role downloads `<base>/<amd64-usr\|arm64-usr>/<target version>/flatcar-<name>.gz` for each enabled Flatcar extension, through the proxy of the cluster. The SIGHUP update mirror does not have these payloads. |
 
 ### `os_update_payload_pins`<a id="os_stage.yml-variable-os_update_payload_pins"></a>
 
