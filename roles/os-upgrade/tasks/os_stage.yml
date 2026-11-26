@@ -47,11 +47,13 @@
       # spec.infrastructure.proxy, as in sysext/tasks/component.yml.
       environment: "{{ proxy_env | default({}) }}"
       # Retry a connection failure instead of stopping the upgrade. A retry downloads the whole payload again,
-      # so a checksum that does not match is not retried.
+      # so a checksum that does not match is not retried. get_url also reports an HTTP 4xx as "Request failed":
+      # another try cannot fix it, except 408 (request timeout) and 429 (rate limit).
       register: os_update_payload_download
       until: >-
         os_update_payload_download is succeeded
         or (os_update_payload_download.msg | default('')) is not search('Request failed|timed out')
+        or (os_update_payload_download.status_code | default(0) | int) in range(400, 500) | difference([408, 429])
       retries: 5
       delay: 10
       ansible.builtin.get_url:
@@ -61,6 +63,57 @@
         owner: root
         group: root
         mode: "0644"
+
+    # flatcar-update refuses a payload without the extensions of enabled-sysext.conf (for example
+    # nvidia-drivers-570-open). The for line is a copy of flatcar-update (flatcar/init bin/flatcar-update),
+    # split at the pipes: keep it the same.
+    - name: Read the enabled Flatcar extensions
+      register: os_update_enabled_extensions
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          for NAME in $(grep -h -o '^[^#]*' /etc/flatcar/enabled-sysext.conf /usr/share/flatcar/enabled-sysext.conf 2> /dev/null \
+              | grep -v -x -f <(grep '^-' /etc/flatcar/enabled-sysext.conf 2> /dev/null | cut -d - -f 2-) \
+              | grep -v -P '^(-).*'); do
+            echo "${NAME}"
+          done | sort -u
+        executable: /bin/bash
+
+    - name: Download the enabled Flatcar extensions
+      block:
+        # No checksum pin: the postinst checks each extension with the update-payload signing key.
+        # force: a file left by a failed stage can be for another version, and the file name has no version.
+        - name: Download the enabled Flatcar extensions of the target version
+          environment: "{{ proxy_env | default({}) }}"
+          loop: "{{ os_update_enabled_extensions.stdout_lines }}"
+          register: os_update_extension_download
+          until: >-
+            os_update_extension_download is succeeded
+            or (os_update_extension_download.msg | default('')) is not search('Request failed|timed out')
+            or (os_update_extension_download.status_code | default(0) | int) in range(400, 500) | difference([408, 429])
+          retries: 5
+          delay: 10
+          ansible.builtin.get_url:
+            url: >-
+              {{ os_update_extension_base_url }}/{{ 'arm64-usr' if os_update_arch == 'arm64' else 'amd64-usr' }}/{{
+              os_update_target_version }}/flatcar-{{ item }}.gz
+            dest: "{{ os_update_payload_path | dirname }}/flatcar-{{ item }}.gz"
+            force: true
+            owner: root
+            group: root
+            mode: "0644"
+      rescue:
+        - name: Fail with the extensions that did not download
+          ansible.builtin.fail:
+            msg: >-
+              The upgrade cannot download these Flatcar extensions of Flatcar {{ os_update_target_version }}:
+              {% for r in ansible_failed_result.results | default([]) if r.failed | default(false) -%}
+              {{ r.item }} ({{ r.url | default('') }}: {{ r.response | default(r.msg | default('')) }}){{ '' if loop.last else ', ' }}
+              {%- endfor %}.
+              /etc/flatcar/enabled-sysext.conf on the node enables them, and flatcar-update needs them to stage the update.
+              Make sure that Flatcar publishes them for this version and architecture, and that the node can reach
+              {{ os_update_extension_base_url }}. The upgrade did not drain the node.
 
     # Before update-engine runs: a node from before SD 1.36 still points to the Nebraska update server, and
     # flatcar-update can exit (port in use, OEM check) before it writes update.conf.
@@ -101,14 +154,10 @@
     - name: Stage the update payload with flatcar-update
       changed_when: true
       ansible.builtin.command:
-        argv:
-          - flatcar-update
-          - -V
-          - "{{ os_update_target_version }}"
-          - -P
-          - "{{ os_update_payload_path }}"
-          - -A
-          - -L
-          - "{{ os_update_local_omaha_port }}"
-          - -M
-          - "{{ os_update_local_payload_port }}"
+        # flatcar-update matches each extension by its file name, flatcar-<name>.gz.
+        argv: >-
+          {{ ['flatcar-update', '-V', os_update_target_version, '-P', os_update_payload_path, '-A',
+              '-L', os_update_local_omaha_port | string, '-M', os_update_local_payload_port | string]
+             + (os_update_enabled_extensions.stdout_lines
+                | map('regex_replace', '^', '--extension=' ~ (os_update_payload_path | dirname) ~ '/flatcar-')
+                | map('regex_replace', '$', '.gz') | list) }}

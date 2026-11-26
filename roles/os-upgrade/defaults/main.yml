@@ -13,3 +13,5 @@ os_update_reboot: false
 os_update_local_omaha_port: 19090
 os_update_local_payload_port: 19091
 os_update_reboot_timeout: 600
+# Where the os-upgrade role downloads the Flatcar extensions of enabled-sysext.conf for the target version.
+os_update_extension_base_url: https://update.release.flatcar-linux.net

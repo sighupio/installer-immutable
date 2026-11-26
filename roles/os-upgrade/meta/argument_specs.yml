@@ -5,13 +5,19 @@ argument_specs:
   # not strip the extension when matching the arg spec, so the key must be exact.
   os_stage.yml:
     short_description: Stage a Flatcar operating system update on the inactive partition of the node.
-    description: >-
-      Fails when the node runs a Flatcar version newer than O(os_update_target_version): the role does not support
-      downgrades. When the node runs an older version, the role downloads the payload from the URL in
-      O(os_update_payload_pins) and compares its SHA-256 checksum with the pin. Then it stages the payload on the inactive A/B partition with C(flatcar-update).
-      The role does all of this before the upgrade drains the node. Thus a missing or bad payload stops the upgrade
-      while the node still serves. The role contacts no update server: it sets C(SERVER=disabled) in
-      C(/etc/flatcar/update.conf), so that every update check of the update engine fails, as Flatcar recommends.
+    description:
+      - >-
+        Fails when the node runs a Flatcar version newer than O(os_update_target_version): the role does not support
+        downgrades. When the node runs an older version, the role downloads the payload from the URL in
+        O(os_update_payload_pins) and compares its SHA-256 checksum with the pin. Then it stages the payload on the inactive A/B partition with C(flatcar-update).
+        The role does all of this before the upgrade drains the node. Thus a missing or bad payload stops the upgrade
+        while the node still serves. The update engine contacts no update server: the role sets C(SERVER=disabled) in
+        C(/etc/flatcar/update.conf), so that every update check fails, as Flatcar recommends.
+      - >-
+        For each Flatcar extension that C(/etc/flatcar/enabled-sysext.conf) enables (for example
+        C(nvidia-drivers-570-open)), the role also downloads C(flatcar-<name>.gz) of the target version from
+        O(os_update_extension_base_url) and gives it to C(flatcar-update), which refuses the payload without it.
+        Flatcar checks the signature of each extension before it installs it.
     options:
       os_update_target_version:
         type: str
@@ -47,6 +53,13 @@ argument_specs:
         description: >-
           Port on the node of the local server that C(flatcar-update) starts to serve the payload. It must not be in
           use on the node.
+      os_update_extension_base_url:
+        type: str
+        required: false
+        description: >-
+          Base URL of the Flatcar extension payloads. Defaults to V(https://update.release.flatcar-linux.net). The role
+          downloads C(<base>/<amd64-usr|arm64-usr>/<target version>/flatcar-<name>.gz) for each enabled Flatcar
+          extension, through the proxy of the cluster. The SIGHUP update mirror does not have these payloads.
   os_reboot.yml:
     short_description: Reboot the node into the staged Flatcar version and confirm that it booted.
     description:
