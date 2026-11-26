@@ -65,17 +65,18 @@
         mode: "0644"
 
     # flatcar-update refuses a payload without the extensions of enabled-sysext.conf (for example
-    # nvidia-drivers-570-open). Same parsing as flatcar-update: /etc and /usr lists, "-name" disables a name.
+    # nvidia-drivers-570-open). The for line is a copy of flatcar-update (flatcar/init bin/flatcar-update),
+    # split at the pipes: keep it the same.
     - name: Read the enabled Flatcar extensions
       register: os_update_enabled_extensions
       changed_when: false
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          disabled="$(grep '^-' /etc/flatcar/enabled-sysext.conf 2>/dev/null | cut -d - -f 2- || true)"
-          for name in $(grep -h -o '^[^#]*' /etc/flatcar/enabled-sysext.conf /usr/share/flatcar/enabled-sysext.conf 2>/dev/null \
-              | grep -v -x -F -e "${disabled:-.}" | grep -v '^-' || true); do
-            echo "${name}"
+          for NAME in $(grep -h -o '^[^#]*' /etc/flatcar/enabled-sysext.conf /usr/share/flatcar/enabled-sysext.conf 2> /dev/null \
+              | grep -v -x -f <(grep '^-' /etc/flatcar/enabled-sysext.conf 2> /dev/null | cut -d - -f 2-) \
+              | grep -v -P '^(-).*'); do
+            echo "${NAME}"
           done | sort -u
         executable: /bin/bash
 
